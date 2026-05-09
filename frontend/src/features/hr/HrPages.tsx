@@ -17,7 +17,7 @@ export function HrLeaves() {
 
 export function HrExpenses() {
   const { data } = useQuery({ queryKey: ['hr-expenses'], queryFn: () => expenses('/finance/expense-claims') });
-  return <Table title="All Expense Claims" rows={data?.items.map((x) => [x.employeeName, x.title, `${x.currency} ${x.totalAmount}`, <StatusBadge status={x.status} />]) ?? []} />;
+  return <Table title="All Expense Claims" rows={data?.items.map((x) => [x.employeeName, x.title, `${x.currency} ${x.totalAmount}`, <StatusBadge status={x.status} kind="expense" />]) ?? []} />;
 }
 
 export function HrUsers() {

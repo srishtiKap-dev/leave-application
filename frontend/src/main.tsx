@@ -6,6 +6,7 @@ import './index.css';
 import { AppLayout } from './layouts/AppLayout';
 import { AuthLayout } from './layouts/AuthLayout';
 import { ProtectedRoute } from './router/ProtectedRoute';
+import { RoleRoute } from './router/RoleRoute';
 import { LoginPage, SimpleAuthPage } from './features/auth/LoginPage';
 import { Dashboard } from './pages/Dashboard';
 import { ApplyLeavePage, LeaveCalendarPage, MyLeavesPage } from './features/leaves/LeavesPages';
@@ -23,8 +24,12 @@ const router = createBrowserRouter([
     { path: '/leaves', element: <MyLeavesPage /> }, { path: '/leaves/apply', element: <ApplyLeavePage /> }, { path: '/leaves/calendar', element: <LeaveCalendarPage /> },
     { path: '/expenses', element: <ExpenseListPage /> }, { path: '/expenses/new', element: <ExpenseFormPage /> }, { path: '/expenses/:id', element: <ExpenseDetailPage /> }, { path: '/expenses/:id/edit', element: <ExpenseFormPage /> },
     { path: '/profile', element: <ProfilePage /> }, { path: '/notifications', element: <NotificationsPage /> },
-    { path: '/manager/dashboard', element: <ManagerDashboard /> }, { path: '/manager/leaves', element: <ManagerLeaves /> }, { path: '/manager/expenses', element: <ManagerExpenses /> }, { path: '/manager/team-calendar', element: <LeaveCalendarPage /> },
-    { path: '/hr/dashboard', element: <HrDashboard /> }, { path: '/hr/leaves', element: <HrLeaves /> }, { path: '/hr/leave-balances', element: <HrUsers /> }, { path: '/hr/holidays', element: <LeaveCalendarPage /> }, { path: '/hr/expenses', element: <HrExpenses /> }, { path: '/hr/reports', element: <Reports /> }, { path: '/hr/users', element: <HrUsers /> }
+    { element: <RoleRoute roles={['Manager', 'HRAdmin', 'SuperAdmin']} />, children: [
+      { path: '/manager/dashboard', element: <ManagerDashboard /> }, { path: '/manager/leaves', element: <ManagerLeaves /> }, { path: '/manager/expenses', element: <ManagerExpenses /> }, { path: '/manager/team-calendar', element: <LeaveCalendarPage /> }
+    ] },
+    { element: <RoleRoute roles={['HRAdmin', 'SuperAdmin']} />, children: [
+      { path: '/hr/dashboard', element: <HrDashboard /> }, { path: '/hr/leaves', element: <HrLeaves /> }, { path: '/hr/leave-balances', element: <HrUsers /> }, { path: '/hr/holidays', element: <LeaveCalendarPage /> }, { path: '/hr/expenses', element: <HrExpenses /> }, { path: '/hr/reports', element: <Reports /> }, { path: '/hr/users', element: <HrUsers /> }
+    ] }
   ] }] }
 ]);
 

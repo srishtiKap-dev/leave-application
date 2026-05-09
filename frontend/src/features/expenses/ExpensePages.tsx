@@ -7,7 +7,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 
 export function ExpenseListPage() {
   const { data } = useQuery({ queryKey: ['expenses'], queryFn: () => expenses() });
-  return <div className="card overflow-x-auto"><div className="mb-4 flex justify-between"><h1 className="text-xl font-bold">My Expense Claims</h1><a className="text-primary" href="/expenses/new">Create new claim</a></div><table className="w-full text-sm"><tbody>{data?.items.map((x) => <tr className="border-t border-slate-200 dark:border-slate-800" key={x.id}><td className="p-2">{x.claimNumber}</td><td>{x.title}</td><td>{x.currency} {x.totalAmount}</td><td><StatusBadge status={x.status} /></td></tr>)}</tbody></table></div>;
+  return <div className="card overflow-x-auto"><div className="mb-4 flex justify-between"><h1 className="text-xl font-bold">My Expense Claims</h1><a className="text-primary" href="/expenses/new">Create new claim</a></div><table className="w-full text-sm"><tbody>{data?.items.map((x) => <tr className="border-t border-slate-200 dark:border-slate-800" key={x.id}><td className="p-2">{x.claimNumber}</td><td>{x.title}</td><td>{x.currency} {x.totalAmount}</td><td><StatusBadge status={x.status} kind="expense" /></td></tr>)}</tbody></table></div>;
 }
 
 export function ExpenseFormPage() {

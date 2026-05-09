@@ -47,12 +47,6 @@ public sealed class DatabaseSeeder(ApplicationDbContext db, UserManager<Applicat
                 Holiday("Guru Nanak Jayanti", y, 11, 15, true), Holiday("Christmas", y, 12, 25));
         await db.SaveChangesAsync(ct);
 
-        var sampleUser = seededUsers.First(x => x.EmployeeId == "EMP001");
-        var cl = leaveTypes.First(x => x.Code == "CL");
-        if (!await db.LeaveApplications.AnyAsync(x => x.ApplicationNumber == $"LA-{y}-00001", ct))
-            db.LeaveApplications.Add(new LeaveApplication { ApplicationNumber = $"LA-{y}-00001", UserId = sampleUser.Id, ManagerId = sampleUser.ManagerId!.Value, LeaveTypeId = cl.Id, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10)), EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(11)), TotalDays = 2, Reason = "Family event", Status = LeaveApplicationStatus.Pending });
-        if (!await db.ExpenseClaims.AnyAsync(x => x.ClaimNumber == $"EXP-{y}-00001", ct))
-            db.ExpenseClaims.Add(new ExpenseClaim { ClaimNumber = $"EXP-{y}-00001", UserId = sampleUser.Id, Title = "Client visit", Description = "Travel and meals", Currency = "INR", TotalAmount = 3200, Status = ExpenseClaimStatus.Submitted, SubmittedAt = DateTime.UtcNow, Items = [new ExpenseItem { Category = ExpenseCategory.Travel, Description = "Cab", Amount = 2200, ExpenseDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2)) }, new ExpenseItem { Category = ExpenseCategory.Meals, Description = "Lunch", Amount = 1000, ExpenseDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2)) }] });
         await db.SaveChangesAsync(ct);
     }
 

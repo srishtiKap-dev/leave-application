@@ -2,25 +2,28 @@ import { Bell, CalendarDays, CreditCard, LayoutDashboard, LogOut, Users } from '
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from '../stores/auth';
+import type { Role } from '../types';
 
 const links = [
-  ['Dashboard', '/dashboard', LayoutDashboard],
-  ['Leaves', '/leaves', CalendarDays],
-  ['Expenses', '/expenses', CreditCard],
-  ['Manager', '/manager/dashboard', Users],
-  ['HR', '/hr/dashboard', Users],
-  ['Notifications', '/notifications', Bell]
+  ['Dashboard', '/dashboard', LayoutDashboard, ['Employee', 'Manager', 'HRAdmin', 'SuperAdmin']],
+  ['Leaves', '/leaves', CalendarDays, ['Employee', 'Manager', 'HRAdmin', 'SuperAdmin']],
+  ['Expenses', '/expenses', CreditCard, ['Employee', 'Manager', 'HRAdmin', 'SuperAdmin']],
+  ['Manager', '/manager/dashboard', Users, ['Manager', 'HRAdmin', 'SuperAdmin']],
+  ['HR', '/hr/dashboard', Users, ['HRAdmin', 'SuperAdmin']],
+  ['Notifications', '/notifications', Bell, ['Employee', 'Manager', 'HRAdmin', 'SuperAdmin']]
 ] as const;
 
 export function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const userRoles = user?.roles ?? [];
+  const visibleLinks = links.filter(([, , , roles]) => roles.some((role) => userRoles.includes(role as Role)));
   return (
     <div className="min-h-screen md:flex">
       <aside className="border-b border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 md:w-64 md:border-b-0 md:border-r">
         <div className="mb-6 px-2 text-xl font-extrabold text-primary">LeavePortal</div>
         <nav className="grid gap-1">
-          {links.map(([label, href, Icon]) => <NavLink key={href} to={href} className={({ isActive }) => `flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium ${isActive ? 'bg-indigo-50 text-primary dark:bg-indigo-950' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'}`}><Icon size={18} />{label}</NavLink>)}
+          {visibleLinks.map(([label, href, Icon]) => <NavLink key={href} to={href} className={({ isActive }) => `flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium ${isActive ? 'bg-indigo-50 text-primary dark:bg-indigo-950' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'}`}><Icon size={18} />{label}</NavLink>)}
         </nav>
       </aside>
       <main className="flex-1">

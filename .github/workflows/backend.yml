@@ -1,0 +1,22 @@
+name: Backend
+on:
+  push:
+    branches: [main]
+    paths: ['src/**', 'tests/**', '.github/workflows/backend.yml']
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet restore LeavePortal.slnx
+      - run: dotnet build LeavePortal.slnx --configuration Release --no-restore
+      - run: dotnet test LeavePortal.slnx --configuration Release --no-build --collect:"XPlat Code Coverage"
+      - run: dotnet publish src/LeavePortal.API/LeavePortal.API.csproj -c Release -o publish
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_API_APP_NAME }}
+          publish-profile: ${{ secrets.AZURE_API_PUBLISH_PROFILE }}
+          package: publish

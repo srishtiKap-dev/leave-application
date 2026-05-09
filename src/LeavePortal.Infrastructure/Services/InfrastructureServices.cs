@@ -30,8 +30,8 @@ public sealed class TokenService(ApplicationDbContext db, UserManager<Applicatio
     public async Task<AuthResult> CreateTokenAsync(ApplicationUser user, CancellationToken ct = default)
     {
         var roles = await users.GetRolesAsync(user);
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["Jwt:SigningKey"] ?? "dev-key-change-this-dev-key-change-this"));
-        var expires = DateTime.UtcNow.AddMinutes(15);
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["JwtSettings:Secret"]!));
+        var expires = DateTime.UtcNow.AddMinutes(config.GetValue("JwtSettings:AccessTokenExpirationMinutes", 60));
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
@@ -39,9 +39,9 @@ public sealed class TokenService(ApplicationDbContext db, UserManager<Applicatio
             new("employeeId", user.EmployeeId)
         };
         claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
-        var jwt = new JwtSecurityToken(config["Jwt:Issuer"], config["Jwt:Audience"], claims, expires: expires, signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
+        var jwt = new JwtSecurityToken(config["JwtSettings:Issuer"], config["JwtSettings:Audience"], claims, expires: expires, signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
         var refresh = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
-        db.RefreshTokens.Add(new RefreshToken { UserId = user.Id, TokenHash = Hash(refresh), ExpiresAt = DateTime.UtcNow.AddDays(7) });
+        db.RefreshTokens.Add(new RefreshToken { UserId = user.Id, TokenHash = Hash(refresh), ExpiresAt = DateTime.UtcNow.AddDays(config.GetValue("JwtSettings:RefreshTokenExpirationDays", 7)) });
         await db.SaveChangesAsync(ct);
         return new AuthResult(new JwtSecurityTokenHandler().WriteToken(jwt), refresh, expires, new UserDto(user.Id, user.EmployeeId, user.FirstName, user.LastName, user.Email ?? "", user.PhoneNumber, user.Department, user.Designation, user.DateOfJoining, user.ManagerId, user.IsActive, user.ProfilePictureUrl, roles.ToList()));
     }

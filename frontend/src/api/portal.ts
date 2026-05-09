@@ -1,4 +1,4 @@
-import { api, unwrap } from './client';
+import { api, unwrap } from './axios';
 import type { AuthResult, Dashboard, ExpenseClaim, LeaveApplication, LeaveBalance, LeaveType, Notification, PagedResult, User } from '../types';
 
 export const login = (email: string, password: string) => unwrap<AuthResult>(api.post('/auth/login', { email, password }));

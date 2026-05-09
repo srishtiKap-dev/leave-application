@@ -4,7 +4,7 @@ import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { useNavigate, Link } from 'react-router-dom';
 import { login } from '../../api/portal';
-import { useAuth } from '../../stores/auth';
+import { dashboardFor, useAuth } from '../../stores/auth';
 import { Button } from '../../components/ui/Button';
 
 const schema = z.object({ email: z.string().email(), password: z.string().min(8) });
@@ -16,7 +16,7 @@ export function LoginPage() {
   const { register, handleSubmit, formState: { isSubmitting } } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: { email: 'admin@company.com', password: 'Admin@123!' } });
   return <section className="w-full max-w-md rounded-lg bg-white p-8 shadow-xl dark:bg-slate-900">
     <h1 className="text-2xl font-extrabold">Sign in</h1>
-    <form className="mt-6 grid gap-4" onSubmit={handleSubmit(async (values) => { const auth = await login(values.email, values.password); setAuth(auth); toast.success('Welcome back'); navigate('/dashboard'); })}>
+    <form className="mt-6 grid gap-4" onSubmit={handleSubmit(async (values) => { const auth = await login(values.email, values.password); setAuth(auth); toast.success('Welcome back'); navigate(dashboardFor(auth.user)); })}>
       <input className="rounded-md border border-slate-300 bg-transparent px-3 py-2 dark:border-slate-700" placeholder="Email" {...register('email')} />
       <input className="rounded-md border border-slate-300 bg-transparent px-3 py-2 dark:border-slate-700" type="password" placeholder="Password" {...register('password')} />
       <Button disabled={isSubmitting}>Login</Button>

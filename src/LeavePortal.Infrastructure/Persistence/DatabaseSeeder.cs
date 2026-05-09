@@ -14,46 +14,61 @@ public sealed class DatabaseSeeder(ApplicationDbContext db, UserManager<Applicat
         foreach (var role in Enum.GetNames<PortalRole>())
             if (!await roles.RoleExistsAsync(role)) await roles.CreateAsync(new IdentityRole<Guid>(role));
 
-        if (await db.LeaveTypes.AnyAsync(ct)) return;
-        var leaveTypes = new[]
+        var leaveTypes = await SeedLeaveTypesAsync(ct);
+
+        var admin = await CreateUser("ADM001", "Super", "Admin", "admin@company.com", "IT", "System Administrator", null, "SuperAdmin", "Admin@123!");
+        var hr = await CreateUser("HR001", "HR", "Manager", "hr@company.com", "HR", "HR Manager", admin.Id, "HRAdmin", "Hr@12345!");
+        var manager1 = await CreateUser("MGR001", "Arjun", "Sharma", "manager1@company.com", "Engineering", "Engineering Manager", admin.Id, "Manager", "Manager@123!");
+        var manager2 = await CreateUser("MGR002", "Priya", "Nair", "manager2@company.com", "Finance", "Finance Manager", admin.Id, "Manager", "Manager@123!");
+
+        var seededUsers = new[]
+        {
+            admin,
+            hr,
+            manager1,
+            manager2,
+            await CreateUser("EMP001", "Ravi", "Kumar", "emp001@company.com", "Engineering", "Software Engineer", manager1.Id, "Employee", "Emp@123!"),
+            await CreateUser("EMP002", "Sneha", "Patel", "emp002@company.com", "Engineering", "Software Engineer", manager1.Id, "Employee", "Emp@123!"),
+            await CreateUser("EMP003", "Amit", "Verma", "emp003@company.com", "Finance", "Financial Analyst", manager2.Id, "Employee", "Emp@123!"),
+            await CreateUser("EMP004", "Divya", "Rao", "emp004@company.com", "HR", "HR Executive", hr.Id, "Employee", "Emp@123!"),
+            await CreateUser("EMP005", "Rahul", "Singh", "emp005@company.com", "Engineering", "QA Engineer", manager1.Id, "Employee", "Emp@123!")
+        };
+
+        foreach (var user in seededUsers)
+        foreach (var type in leaveTypes)
+            if (!await db.LeaveBalances.AnyAsync(x => x.UserId == user.Id && x.LeaveTypeId == type.Id && x.Year == DateTime.UtcNow.Year, ct))
+                db.LeaveBalances.Add(new LeaveBalance { UserId = user.Id, LeaveTypeId = type.Id, Year = DateTime.UtcNow.Year, TotalAllocated = type.MaxDaysPerYear, CarryForward = type.Code == "EL" ? 2 : 0 });
+
+        var y = DateTime.UtcNow.Year;
+        if (!await db.PublicHolidays.AnyAsync(x => x.Year == y, ct))
+            db.PublicHolidays.AddRange(
+                Holiday("Republic Day", y, 1, 26), Holiday("Holi", y, 3, 14), Holiday("Good Friday", y, 4, 18), Holiday("Eid", y, 6, 7, true),
+                Holiday("Independence Day", y, 8, 15), Holiday("Gandhi Jayanti", y, 10, 2), Holiday("Dussehra", y, 10, 21), Holiday("Diwali", y, 11, 1),
+                Holiday("Guru Nanak Jayanti", y, 11, 15, true), Holiday("Christmas", y, 12, 25));
+        await db.SaveChangesAsync(ct);
+
+        var sampleUser = seededUsers.First(x => x.EmployeeId == "EMP001");
+        var cl = leaveTypes.First(x => x.Code == "CL");
+        if (!await db.LeaveApplications.AnyAsync(x => x.ApplicationNumber == $"LA-{y}-00001", ct))
+            db.LeaveApplications.Add(new LeaveApplication { ApplicationNumber = $"LA-{y}-00001", UserId = sampleUser.Id, ManagerId = sampleUser.ManagerId!.Value, LeaveTypeId = cl.Id, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10)), EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(11)), TotalDays = 2, Reason = "Family event", Status = LeaveApplicationStatus.Pending });
+        if (!await db.ExpenseClaims.AnyAsync(x => x.ClaimNumber == $"EXP-{y}-00001", ct))
+            db.ExpenseClaims.Add(new ExpenseClaim { ClaimNumber = $"EXP-{y}-00001", UserId = sampleUser.Id, Title = "Client visit", Description = "Travel and meals", Currency = "INR", TotalAmount = 3200, Status = ExpenseClaimStatus.Submitted, SubmittedAt = DateTime.UtcNow, Items = [new ExpenseItem { Category = ExpenseCategory.Travel, Description = "Cab", Amount = 2200, ExpenseDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2)) }, new ExpenseItem { Category = ExpenseCategory.Meals, Description = "Lunch", Amount = 1000, ExpenseDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2)) }] });
+        await db.SaveChangesAsync(ct);
+    }
+
+    private async Task<List<LeaveType>> SeedLeaveTypesAsync(CancellationToken ct)
+    {
+        var seed = new[]
         {
             new LeaveType { Name = "Casual Leave", Code = "CL", Description = "Short personal leave", MaxDaysPerYear = 12, MaxConsecutiveDays = 3 },
             new LeaveType { Name = "Sick Leave", Code = "SL", Description = "Medical leave", MaxDaysPerYear = 12, RequiresDocumentation = true },
             new LeaveType { Name = "Earned Leave", Code = "EL", Description = "Planned annual leave", MaxDaysPerYear = 18, CarryForwardAllowed = true, MaxCarryForwardDays = 30, NoticeRequiredDays = 7 }
         };
-        db.LeaveTypes.AddRange(leaveTypes);
+        foreach (var leaveType in seed)
+            if (!await db.LeaveTypes.AnyAsync(x => x.Code == leaveType.Code, ct))
+                db.LeaveTypes.Add(leaveType);
         await db.SaveChangesAsync(ct);
-
-        var admin = await CreateUser("EMP000", "Super", "Admin", "admin@company.com", "Technology", "Super Admin", null, "SuperAdmin", "Admin@123!");
-        var hr = await CreateUser("EMP001", "Hema", "Rao", "hr@company.com", "People", "HR Admin", admin.Id, "HRAdmin", "Hr@12345!");
-        List<ApplicationUser> managers = [];
-        foreach (var data in new[] { ("EMP010", "Asha", "Iyer", "Engineering"), ("EMP011", "Rohan", "Mehta", "Sales"), ("EMP012", "Nisha", "Kapoor", "Finance") })
-            managers.Add(await CreateUser(data.Item1, data.Item2, data.Item3, $"{data.Item2.ToLower()}@company.com", data.Item4, "Manager", admin.Id, "Manager", "Manager@123!"));
-
-        var departments = new[] { "Engineering", "Sales", "Finance", "People" };
-        for (var i = 1; i <= 10; i++)
-        {
-            var manager = managers[i % managers.Count];
-            await CreateUser($"EMP{100 + i}", $"Employee{i}", "User", $"employee{i}@company.com", departments[i % departments.Length], "Associate", manager.Id, "Employee", "Employee@123!");
-        }
-
-        var allUsers = await db.Users.ToListAsync(ct);
-        foreach (var user in allUsers)
-        foreach (var type in leaveTypes)
-            db.LeaveBalances.Add(new LeaveBalance { UserId = user.Id, LeaveTypeId = type.Id, Year = DateTime.UtcNow.Year, TotalAllocated = type.MaxDaysPerYear, CarryForward = type.Code == "EL" ? 2 : 0 });
-
-        var y = DateTime.UtcNow.Year;
-        db.PublicHolidays.AddRange(
-            Holiday("Republic Day", y, 1, 26), Holiday("Holi", y, 3, 14), Holiday("Good Friday", y, 4, 18), Holiday("Eid", y, 6, 7, true),
-            Holiday("Independence Day", y, 8, 15), Holiday("Gandhi Jayanti", y, 10, 2), Holiday("Dussehra", y, 10, 21), Holiday("Diwali", y, 11, 1),
-            Holiday("Guru Nanak Jayanti", y, 11, 15, true), Holiday("Christmas", y, 12, 25));
-        await db.SaveChangesAsync(ct);
-
-        var sampleUser = allUsers.First(x => x.EmployeeId == "EMP101");
-        var cl = leaveTypes.First(x => x.Code == "CL");
-        db.LeaveApplications.Add(new LeaveApplication { ApplicationNumber = $"LA-{y}-00001", UserId = sampleUser.Id, ManagerId = sampleUser.ManagerId!.Value, LeaveTypeId = cl.Id, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10)), EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(11)), TotalDays = 2, Reason = "Family event", Status = LeaveApplicationStatus.Pending });
-        db.ExpenseClaims.Add(new ExpenseClaim { ClaimNumber = $"EXP-{y}-00001", UserId = sampleUser.Id, Title = "Client visit", Description = "Travel and meals", Currency = "INR", TotalAmount = 3200, Status = ExpenseClaimStatus.Submitted, SubmittedAt = DateTime.UtcNow, Items = [new ExpenseItem { Category = ExpenseCategory.Travel, Description = "Cab", Amount = 2200, ExpenseDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2)) }, new ExpenseItem { Category = ExpenseCategory.Meals, Description = "Lunch", Amount = 1000, ExpenseDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2)) }] });
-        await db.SaveChangesAsync(ct);
+        return await db.LeaveTypes.Where(x => x.Code == "CL" || x.Code == "SL" || x.Code == "EL").ToListAsync(ct);
     }
 
     private async Task<ApplicationUser> CreateUser(string employeeId, string firstName, string lastName, string email, string department, string designation, Guid? managerId, string role, string password)
@@ -61,7 +76,7 @@ public sealed class DatabaseSeeder(ApplicationDbContext db, UserManager<Applicat
         var user = await users.FindByEmailAsync(email);
         if (user is null)
         {
-            user = new ApplicationUser { UserName = email, Email = email, EmailConfirmed = true, EmployeeId = employeeId, FirstName = firstName, LastName = lastName, Department = department, Designation = designation, ManagerId = managerId, DateOfJoining = DateTime.UtcNow.AddYears(-1) };
+            user = new ApplicationUser { UserName = email, Email = email, EmailConfirmed = true, EmployeeId = employeeId, FirstName = firstName, LastName = lastName, Department = department, Designation = designation, ManagerId = managerId, DateOfJoining = DateTime.UtcNow.AddYears(-1), IsActive = true };
             var result = await users.CreateAsync(user, password);
             if (!result.Succeeded) throw new InvalidOperationException(string.Join(", ", result.Errors.Select(x => x.Description)));
         }

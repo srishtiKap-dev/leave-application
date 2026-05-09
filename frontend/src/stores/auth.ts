@@ -20,3 +20,10 @@ export const useAuth = create<AuthState>((set) => ({
     set({ user: undefined, accessToken: undefined, refreshToken: undefined });
   }
 }));
+
+export function dashboardFor(user?: User) {
+  const roles = user?.roles ?? [];
+  if (roles.includes('HRAdmin') || roles.includes('SuperAdmin')) return '/hr/dashboard';
+  if (roles.includes('Manager')) return '/manager/dashboard';
+  return '/dashboard';
+}

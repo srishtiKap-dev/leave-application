@@ -18,7 +18,9 @@ Full-stack Employee Leave & Expense Management Portal with ASP.NET Core 10, Clea
 3. Update `src/LeavePortal.API/appsettings.Development.json` or environment variables:
    - `ConnectionStrings__DefaultConnection`
    - `ConnectionStrings__Storage`
-   - `Jwt__SigningKey`
+   - `JwtSettings__Secret`
+   - `JwtSettings__Issuer`
+   - `JwtSettings__Audience`
    - `SendGrid__ApiKey`
    - `Cors__AllowedOrigins__0`
 4. Run:
@@ -35,8 +37,9 @@ Seed logins:
 
 - `admin@company.com` / `Admin@123!`
 - `hr@company.com` / `Hr@12345!`
-- managers use `Manager@123!`
-- employees use `Employee@123!`
+- `manager1@company.com` / `Manager@123!`
+- `manager2@company.com` / `Manager@123!`
+- `emp001@company.com` through `emp005@company.com` / `Emp@123!`
 
 ## Local Frontend
 
@@ -48,7 +51,7 @@ npm install
 npm run dev
 ```
 
-Set `VITE_API_URL=https://localhost:7109/api/v1` in `frontend/.env.local`.
+Set `VITE_API_URL=http://localhost:5088/api/v1` in `frontend/.env.local` if you want to override the frontend default.
 
 ## Tests
 
@@ -77,9 +80,11 @@ Required App Service settings:
 
 - `ConnectionStrings__DefaultConnection`
 - `ConnectionStrings__Storage`
-- `Jwt__Issuer`
-- `Jwt__Audience`
-- `Jwt__SigningKey`
+- `JwtSettings__Secret`
+- `JwtSettings__Issuer`
+- `JwtSettings__Audience`
+- `JwtSettings__AccessTokenExpirationMinutes`
+- `JwtSettings__RefreshTokenExpirationDays`
 - `Cors__AllowedOrigins__0`
 - `Storage__ReceiptsContainer`
 - `SendGrid__ApiKey`

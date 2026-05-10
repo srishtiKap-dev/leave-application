@@ -9,6 +9,7 @@ using LeavePortal.Infrastructure.Jobs;
 using LeavePortal.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -21,6 +22,17 @@ var enableHangfire = !builder.Environment.IsEnvironment("Testing") && !useSqlite
 builder.Host.UseSerilog((ctx, lc) => lc.ReadFrom.Configuration(ctx.Configuration).WriteTo.Console().WriteTo.ApplicationInsights(ctx.Configuration["ApplicationInsights:ConnectionString"], TelemetryConverter.Traces));
 builder.Services.AddInfrastructure(builder.Configuration, enableHangfire);
 builder.Services.AddControllers(options => options.Filters.Add<FluentValidationFilter>());
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var errors = context.ModelState.Values
+            .SelectMany(x => x.Errors)
+            .Select(x => string.IsNullOrWhiteSpace(x.ErrorMessage) ? "Invalid request payload." : x.ErrorMessage)
+            .ToArray();
+        return new BadRequestObjectResult(LeavePortal.Application.Common.ApiResponse<object>.Fail("Validation failed.", errors));
+    };
+});
 builder.Services.AddScoped<FluentValidationFilter>();
 builder.Services.AddValidatorsFromAssembly(LeavePortal.Application.AssemblyReference.Assembly);
 builder.Services.AddApiVersioning(o => { o.DefaultApiVersion = new ApiVersion(1); o.AssumeDefaultVersionWhenUnspecified = true; o.ReportApiVersions = true; }).AddMvc();

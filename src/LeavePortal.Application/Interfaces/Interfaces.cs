@@ -37,7 +37,7 @@ public interface IPortalService
     Task<LeaveTypeDto> UpsertLeaveTypeAsync(Guid? id, UpsertLeaveTypeRequest request, CancellationToken ct);
     Task<IReadOnlyList<LeaveBalanceDto>> GetBalancesAsync(Guid userId, int year, CancellationToken ct);
     Task<LeaveApplicationDto> ApplyLeaveAsync(Guid userId, ApplyLeaveRequest request, CancellationToken ct);
-    Task<PagedResult<LeaveApplicationDto>> GetLeavesAsync(Guid? userId, Guid? managerId, string? status, int? year, Guid? typeId, PageRequest page, CancellationToken ct);
+    Task<PagedResult<LeaveApplicationDto>> GetLeavesAsync(Guid? userId, Guid? managerId, string? status, int? year, Guid? typeId, string? search, PageRequest page, CancellationToken ct);
     Task<LeaveApplicationDto> ApproveLeaveByManagerAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct);
     Task<LeaveApplicationDto> ApproveLeaveByHrAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct);
     Task<LeaveApplicationDto> RejectLeaveAsync(Guid id, Guid actorId, string? remarks, bool hr, CancellationToken ct);
@@ -48,9 +48,11 @@ public interface IPortalService
     Task<ExpenseClaimDto> UpsertExpenseClaimAsync(Guid userId, Guid? id, UpsertExpenseClaimRequest request, CancellationToken ct);
     Task<ExpenseClaimDto> AddExpenseItemAsync(Guid claimId, UpsertExpenseItemRequest request, CancellationToken ct);
     Task<ExpenseClaimDto> SubmitExpenseAsync(Guid claimId, Guid actorId, CancellationToken ct);
-    Task<PagedResult<ExpenseClaimDto>> GetExpensesAsync(Guid? userId, Guid? managerId, string? status, PageRequest page, CancellationToken ct);
+    Task<PagedResult<ExpenseClaimDto>> GetExpensesAsync(Guid? userId, Guid? managerId, string? status, string? search, PageRequest page, CancellationToken ct);
     Task<ExpenseClaimDto> ApproveExpenseByManagerAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct);
     Task<ExpenseClaimDto> ApproveExpenseByFinanceAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct);
+    Task<ExpenseClaimDto> RejectExpenseByManagerAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct);
+    Task<ExpenseClaimDto> RejectExpenseByFinanceAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct);
     Task<ExpenseClaimDto> MarkExpensePaidAsync(Guid id, Guid actorId, CancellationToken ct);
     Task<PagedResult<NotificationDto>> GetNotificationsAsync(Guid userId, PageRequest page, CancellationToken ct);
     Task MarkNotificationReadAsync(Guid id, Guid userId, CancellationToken ct);

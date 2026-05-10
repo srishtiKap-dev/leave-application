@@ -1,22 +1,35 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { applyLeave, leaveTypes, leaves } from '../../api/portal';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 
+type LeaveForm = { leaveTypeId: string; startDate: string; endDate: string; reason: string; isHalfDay: boolean };
+
 export function ApplyLeavePage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { data: types } = useQuery({ queryKey: ['leave-types'], queryFn: leaveTypes });
-  const { register, handleSubmit } = useForm();
-  const mutation = useMutation({ mutationFn: applyLeave, onSuccess: () => { toast.success('Leave submitted'); qc.invalidateQueries({ queryKey: ['leaves'] }); } });
-  return <form className="card grid max-w-2xl gap-4" onSubmit={handleSubmit((v) => mutation.mutate({ ...v, isHalfDay: Boolean(v.isHalfDay), saveAsDraft: false }))}>
+  const { register, handleSubmit, formState: { errors } } = useForm<LeaveForm>({ defaultValues: { leaveTypeId: '', reason: '', isHalfDay: false } });
+  const mutation = useMutation({ mutationFn: applyLeave, onSuccess: () => { toast.success('Leave submitted'); qc.invalidateQueries({ queryKey: ['leaves'] }); navigate('/leaves'); }, onError: (error: any) => toast.error(error?.response?.data?.errors?.[0] ?? error?.response?.data?.message ?? 'Unable to submit leave') });
+  return <form className="card grid max-w-2xl gap-4" onSubmit={handleSubmit((v) => mutation.mutate({ ...v, isHalfDay: Boolean(v.isHalfDay), halfDayType: null, saveAsDraft: false }))}>
+    <button type="button" className="w-fit text-sm font-medium text-primary" onClick={() => navigate(-1)}>← Back</button>
     <h1 className="text-xl font-bold">Apply for Leave</h1>
-    <select className="rounded-md border p-2 dark:bg-slate-900" {...register('leaveTypeId')}>{types?.map((t) => <option key={t.id} value={t.id}>{t.code} - {t.name}</option>)}</select>
+    <label className="grid gap-1 text-sm">
+      <span className="font-medium">Leave type</span>
+      <select className="rounded-md border p-2 dark:bg-slate-900" {...register('leaveTypeId', { required: 'Select a leave type' })}>
+        <option value="">Select leave type</option>
+        {types?.map((t) => <option key={t.id} value={t.id}>{t.code} - {t.name}</option>)}
+      </select>
+      {errors.leaveTypeId && <span className="text-xs text-red-600">{errors.leaveTypeId.message}</span>}
+    </label>
     <div className="grid gap-3 sm:grid-cols-2"><input className="rounded-md border p-2 dark:bg-slate-900" type="date" {...register('startDate')} /><input className="rounded-md border p-2 dark:bg-slate-900" type="date" {...register('endDate')} /></div>
     <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('isHalfDay')} /> Half day</label>
-    <textarea className="min-h-28 rounded-md border p-2 dark:bg-slate-900" placeholder="Reason" {...register('reason')} />
-    <Button>Submit</Button>
+    <textarea className="min-h-28 rounded-md border p-2 dark:bg-slate-900" placeholder="Reason" {...register('reason', { required: 'Reason is required' })} />
+    {errors.reason && <span className="text-xs text-red-600">{errors.reason.message}</span>}
+    <Button disabled={mutation.isPending}>{mutation.isPending ? 'Submitting...' : 'Submit'}</Button>
   </form>;
 }
 

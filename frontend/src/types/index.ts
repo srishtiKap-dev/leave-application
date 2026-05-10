@@ -1,11 +1,12 @@
 export type Role = 'Employee' | 'Manager' | 'HRAdmin' | 'SuperAdmin';
 export type ApiResponse<T> = { success: boolean; data: T; message: string; errors: string[] };
 export type PagedResult<T> = { items: T[]; page: number; pageSize: number; totalCount: number; totalPages: number };
-export type User = { id: string; employeeId: string; firstName: string; lastName: string; email: string; department: string; designation: string; managerId?: string; roles: Role[] };
+export type User = { id: string; employeeId: string; firstName: string; lastName: string; email: string; phoneNumber?: string; department: string; designation: string; dateOfJoining?: string; managerId?: string; isActive?: boolean; roles: Role[] };
+export type UpsertUser = { employeeId: string; firstName: string; lastName: string; email: string; phoneNumber?: string; department: string; designation: string; dateOfJoining: string; managerId?: string | null; role: Role; isActive: boolean };
 export type AuthResult = { accessToken: string; refreshToken: string; expiresAt: string; user: User };
 export type LeaveType = { id: string; name: string; code: 'CL' | 'SL' | 'EL'; maxDaysPerYear: number; requiresDocumentation: boolean; noticeRequiredDays: number };
 export type LeaveBalance = { id: string; leaveTypeCode: string; totalAllocated: number; totalUsed: number; totalPending: number; carryForward: number; remaining: number };
-export type LeaveApplication = { id: string; applicationNumber: string; employeeName: string; leaveTypeCode: string; startDate: string; endDate: string; totalDays: number; reason: string; status: string | number; appliedAt: string; managerRemarks?: string; hrRemarks?: string };
+export type LeaveApplication = { id: string; applicationNumber: string; employeeName: string; leaveTypeId: string; leaveTypeCode: string; startDate: string; endDate: string; totalDays: number; reason: string; status: string | number; appliedAt: string; managerRemarks?: string; hrRemarks?: string };
 export type ExpenseItem = { id: string; category: string; description: string; amount: number; expenseDate: string; receiptUrl?: string };
 export type ExpenseClaim = { id: string; claimNumber: string; employeeName: string; title: string; totalAmount: number; currency: string; status: string | number; submittedAt?: string; items: ExpenseItem[] };
 export type Notification = { id: string; title: string; message: string; type: string; isRead: boolean; createdAt: string };

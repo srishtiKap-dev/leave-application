@@ -10,7 +10,7 @@ namespace LeavePortal.API.Controllers;
 [Route("api/v{version:apiVersion}/hr")]
 public sealed class HrController(IPortalService portal) : BaseApiController
 {
-    [HttpGet("leave-applications")] public async Task<ActionResult<ApiResponse<PagedResult<LeaveApplicationDto>>>> Leaves([FromQuery] string? status, [FromQuery] int? year, [FromQuery] Guid? type, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default) => OkResponse(await portal.GetLeavesAsync(null, null, status, year, type, Page(page, pageSize), ct));
+    [HttpGet("leave-applications")] public async Task<ActionResult<ApiResponse<PagedResult<LeaveApplicationDto>>>> Leaves([FromQuery] string? status, [FromQuery] int? year, [FromQuery] Guid? type, [FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default) => OkResponse(await portal.GetLeavesAsync(null, null, status, year, type, search, Page(page, pageSize), ct));
     [HttpPost("leave-applications/{id:guid}/approve")] public async Task<ActionResult<ApiResponse<LeaveApplicationDto>>> Approve(Guid id, [FromBody] ApprovalRequest request, CancellationToken ct) => OkResponse(await portal.ApproveLeaveByHrAsync(id, UserId, request.Remarks, ct));
     [HttpPost("leave-applications/{id:guid}/reject")] public async Task<ActionResult<ApiResponse<LeaveApplicationDto>>> Reject(Guid id, [FromBody] ApprovalRequest request, CancellationToken ct) => OkResponse(await portal.RejectLeaveAsync(id, UserId, request.Remarks, true, ct));
     [HttpGet("leave-balances")] public async Task<ActionResult<ApiResponse<object>>> Balances(CancellationToken ct) => OkResponse<object>(new { employees = await portal.GetUsersAsync(null, null, null, Page(1, 500), ct) });

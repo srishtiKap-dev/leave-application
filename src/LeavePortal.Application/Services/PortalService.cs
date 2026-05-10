@@ -92,7 +92,7 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
         return await GetLeaveDto(leave.Id, ct);
     }
 
-    public async Task<PagedResult<LeaveApplicationDto>> GetLeavesAsync(Guid? userId, Guid? managerId, string? status, int? year, Guid? typeId, PageRequest page, CancellationToken ct)
+    public async Task<PagedResult<LeaveApplicationDto>> GetLeavesAsync(Guid? userId, Guid? managerId, string? status, int? year, Guid? typeId, string? search, PageRequest page, CancellationToken ct)
     {
         var query = db.LeaveApplications.Include(x => x.User).Include(x => x.LeaveType).AsQueryable();
         if (userId.HasValue) query = query.Where(x => x.UserId == userId);
@@ -100,27 +100,39 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
         if (Enum.TryParse<LeaveApplicationStatus>(status, true, out var parsed)) query = query.Where(x => x.Status == parsed);
         if (year.HasValue) query = query.Where(x => x.StartDate.Year == year);
         if (typeId.HasValue) query = query.Where(x => x.LeaveTypeId == typeId);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.ToLower();
+            query = query.Where(x => x.ApplicationNumber.ToLower().Contains(s)
+                || x.Reason.ToLower().Contains(s)
+                || x.User.FirstName.ToLower().Contains(s)
+                || x.User.LastName.ToLower().Contains(s)
+                || x.User.Email!.ToLower().Contains(s)
+                || x.User.EmployeeId.ToLower().Contains(s));
+        }
         var total = await query.CountAsync(ct);
         var items = await query.OrderByDescending(x => x.AppliedAt).Skip(page.Skip).Take(page.Take).ToListAsync(ct);
         return new PagedResult<LeaveApplicationDto>(items.Select(MapLeave).ToList(), page.Page, page.Take, total);
     }
 
-    public Task<LeaveApplicationDto> ApproveLeaveByManagerAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct) =>
-        ChangeLeave(id, actorId, LeaveApplicationStatus.Pending, LeaveApplicationStatus.ApprovedByManager, LeaveApprovalAction.ApprovedByManager, remarks, false, ct);
+    public async Task<LeaveApplicationDto> ApproveLeaveByManagerAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct)
+    {
+        await MovePendingToUsed(id, ct);
+        return await ChangeLeave(id, actorId, LeaveApplicationStatus.Pending, LeaveApplicationStatus.ApprovedByManager, LeaveApprovalAction.ApprovedByManager, remarks, false, ct);
+    }
 
     public async Task<LeaveApplicationDto> ApproveLeaveByHrAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct)
     {
-        var dto = await ChangeLeave(id, actorId, LeaveApplicationStatus.ApprovedByManager, LeaveApplicationStatus.ApprovedByHR, LeaveApprovalAction.ApprovedByHR, remarks, true, ct);
-        await MovePendingToUsed(id, ct);
-        return dto;
+        return await ChangeLeave(id, actorId, LeaveApplicationStatus.ApprovedByManager, LeaveApplicationStatus.ApprovedByHR, LeaveApprovalAction.ApprovedByHR, remarks, true, ct);
     }
 
     public async Task<LeaveApplicationDto> RejectLeaveAsync(Guid id, Guid actorId, string? remarks, bool hr, CancellationToken ct)
     {
         var required = hr ? LeaveApplicationStatus.ApprovedByManager : LeaveApplicationStatus.Pending;
         var action = hr ? LeaveApprovalAction.RejectedByHR : LeaveApprovalAction.RejectedByManager;
+        if (hr) await RestoreUsed(id, ct);
+        else await RestorePending(id, ct);
         var dto = await ChangeLeave(id, actorId, required, LeaveApplicationStatus.Rejected, action, remarks, hr, ct);
-        await RestorePending(id, ct);
         return dto;
     }
 
@@ -128,10 +140,12 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
     {
         var leave = await db.LeaveApplications.FirstAsync(x => x.Id == id, ct);
         if (leave.StartDate <= DateOnly.FromDateTime(DateTime.UtcNow)) throw new InvalidOperationException("Only future leave can be cancelled.");
-        leave.Status = leave.Status == LeaveApplicationStatus.Pending ? LeaveApplicationStatus.Withdrawn : LeaveApplicationStatus.Cancelled;
+        var previousStatus = leave.Status;
+        leave.Status = previousStatus == LeaveApplicationStatus.Pending ? LeaveApplicationStatus.Withdrawn : LeaveApplicationStatus.Cancelled;
         leave.CancelReason = reason; leave.CancelledAt = DateTime.UtcNow;
-        leave.History.Add(new LeaveApprovalHistory { ActionBy = actorId, Action = leave.Status == LeaveApplicationStatus.Withdrawn ? LeaveApprovalAction.Withdrawn : LeaveApprovalAction.Cancelled, Remarks = reason });
-        await RestorePending(id, ct);
+        await AddEntityAsync(new LeaveApprovalHistory { LeaveApplicationId = id, ActionBy = actorId, Action = leave.Status == LeaveApplicationStatus.Withdrawn ? LeaveApprovalAction.Withdrawn : LeaveApprovalAction.Cancelled, Remarks = reason }, ct);
+        if (previousStatus == LeaveApplicationStatus.Pending) await RestorePending(id, ct);
+        if (previousStatus is LeaveApplicationStatus.ApprovedByManager or LeaveApplicationStatus.ApprovedByHR) await RestoreUsed(id, ct);
         await db.SaveChangesAsync(ct);
         return await GetLeaveDto(id, ct);
     }
@@ -170,17 +184,28 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
     {
         var claim = await db.ExpenseClaims.Include(x => x.User).FirstAsync(x => x.Id == claimId && x.UserId == actorId && x.Status == ExpenseClaimStatus.Draft, ct);
         claim.Status = ExpenseClaimStatus.Submitted; claim.SubmittedAt = DateTime.UtcNow;
-        claim.History.Add(new ExpenseApprovalHistory { ActionBy = actorId, Action = ExpenseApprovalAction.Submitted });
+        await AddEntityAsync(new ExpenseApprovalHistory { ExpenseClaimId = claimId, ActionBy = actorId, Action = ExpenseApprovalAction.Submitted }, ct);
         if (claim.User.ManagerId.HasValue) AddNotification(claim.User.ManagerId.Value, "Expense approval needed", $"{claim.User.FirstName} submitted {claim.ClaimNumber}.", NotificationType.ExpenseStatus, claim.Id, nameof(ExpenseClaim));
         await db.SaveChangesAsync(ct); return await GetExpenseDto(claimId, ct);
     }
 
-    public async Task<PagedResult<ExpenseClaimDto>> GetExpensesAsync(Guid? userId, Guid? managerId, string? status, PageRequest page, CancellationToken ct)
+    public async Task<PagedResult<ExpenseClaimDto>> GetExpensesAsync(Guid? userId, Guid? managerId, string? status, string? search, PageRequest page, CancellationToken ct)
     {
         var query = db.ExpenseClaims.Include(x => x.User).Include(x => x.Items).AsQueryable();
         if (userId.HasValue) query = query.Where(x => x.UserId == userId);
         if (managerId.HasValue) query = query.Where(x => x.User.ManagerId == managerId);
         if (Enum.TryParse<ExpenseClaimStatus>(status, true, out var parsed)) query = query.Where(x => x.Status == parsed);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.ToLower();
+            query = query.Where(x => x.ClaimNumber.ToLower().Contains(s)
+                || x.Title.ToLower().Contains(s)
+                || (x.Description != null && x.Description.ToLower().Contains(s))
+                || x.User.FirstName.ToLower().Contains(s)
+                || x.User.LastName.ToLower().Contains(s)
+                || x.User.Email!.ToLower().Contains(s)
+                || x.User.EmployeeId.ToLower().Contains(s));
+        }
         var total = await query.CountAsync(ct);
         var items = await query.OrderByDescending(x => x.CreatedAt).Skip(page.Skip).Take(page.Take).ToListAsync(ct);
         return new PagedResult<ExpenseClaimDto>(items.Select(MapExpense).ToList(), page.Page, page.Take, total);
@@ -188,6 +213,8 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
 
     public Task<ExpenseClaimDto> ApproveExpenseByManagerAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct) => ChangeExpense(id, actorId, ExpenseClaimStatus.Submitted, ExpenseClaimStatus.ApprovedByManager, ExpenseApprovalAction.ApprovedByManager, remarks, ct);
     public Task<ExpenseClaimDto> ApproveExpenseByFinanceAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct) => ChangeExpense(id, actorId, ExpenseClaimStatus.ApprovedByManager, ExpenseClaimStatus.ApprovedByFinance, ExpenseApprovalAction.ApprovedByFinance, remarks, ct);
+    public Task<ExpenseClaimDto> RejectExpenseByManagerAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct) => ChangeExpense(id, actorId, ExpenseClaimStatus.Submitted, ExpenseClaimStatus.Rejected, ExpenseApprovalAction.RejectedByManager, remarks, ct);
+    public Task<ExpenseClaimDto> RejectExpenseByFinanceAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct) => ChangeExpense(id, actorId, ExpenseClaimStatus.ApprovedByManager, ExpenseClaimStatus.Rejected, ExpenseApprovalAction.RejectedByFinance, remarks, ct);
     public Task<ExpenseClaimDto> MarkExpensePaidAsync(Guid id, Guid actorId, CancellationToken ct) => ChangeExpense(id, actorId, ExpenseClaimStatus.ApprovedByFinance, ExpenseClaimStatus.Paid, ExpenseApprovalAction.Paid, "Paid", ct);
 
     public async Task<PagedResult<NotificationDto>> GetNotificationsAsync(Guid userId, PageRequest page, CancellationToken ct)
@@ -203,8 +230,8 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
 
     public async Task<DashboardDto> DashboardAsync(Guid userId, string role, CancellationToken ct)
     {
-        var leaves = (await GetLeavesAsync(role == "HRAdmin" ? null : userId, role == "Manager" ? userId : null, null, DateTime.UtcNow.Year, null, new PageRequest(1, 5), ct)).Items;
-        var expenses = (await GetExpensesAsync(role == "HRAdmin" ? null : userId, role == "Manager" ? userId : null, null, new PageRequest(1, 5), ct)).Items;
+        var leaves = (await GetLeavesAsync(role == "HRAdmin" ? null : userId, role == "Manager" ? userId : null, null, DateTime.UtcNow.Year, null, null, new PageRequest(1, 5), ct)).Items;
+        var expenses = (await GetExpensesAsync(role == "HRAdmin" ? null : userId, role == "Manager" ? userId : null, null, null, new PageRequest(1, 5), ct)).Items;
         var notes = (await GetNotificationsAsync(userId, new PageRequest(1, 5), ct)).Items;
         var metrics = new List<DashboardMetric> { new("Leaves", leaves.Count, "leave"), new("Expenses", expenses.Count, "expense"), new("Unread", notes.Count(x => !x.IsRead), "notification") };
         return new DashboardDto(metrics, leaves, expenses, notes);
@@ -220,6 +247,7 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
 
     private Task MovePendingToUsed(Guid leaveId, CancellationToken ct) => ChangeBalance(leaveId, (b, l) => Math.Max(0, b.TotalPending - l.TotalDays), (b, l) => b.TotalUsed + l.TotalDays, ct);
     private Task RestorePending(Guid leaveId, CancellationToken ct) => ChangeBalance(leaveId, (b, l) => Math.Max(0, b.TotalPending - l.TotalDays), (b, l) => b.TotalUsed, ct);
+    private Task RestoreUsed(Guid leaveId, CancellationToken ct) => ChangeBalance(leaveId, (b, l) => b.TotalPending, (b, l) => Math.Max(0, b.TotalUsed - l.TotalDays), ct);
 
     private async Task<LeaveApplicationDto> ChangeLeave(Guid id, Guid actorId, LeaveApplicationStatus required, LeaveApplicationStatus next, LeaveApprovalAction action, string? remarks, bool hr, CancellationToken ct)
     {
@@ -227,7 +255,7 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
         if (leave.Status != required) throw new InvalidOperationException($"Leave must be {required}.");
         leave.Status = next; leave.UpdatedAt = DateTime.UtcNow;
         if (hr) { leave.HRApprovedAt = DateTime.UtcNow; leave.HRRemarks = remarks; } else { leave.ManagerApprovedAt = DateTime.UtcNow; leave.ManagerRemarks = remarks; }
-        leave.History.Add(new LeaveApprovalHistory { ActionBy = actorId, Action = action, Remarks = remarks });
+        await AddEntityAsync(new LeaveApprovalHistory { LeaveApplicationId = id, ActionBy = actorId, Action = action, Remarks = remarks }, ct);
         AddNotification(leave.UserId, "Leave status updated", $"{leave.ApplicationNumber} is {next}.", NotificationType.LeaveStatus, leave.Id, nameof(LeaveApplication));
         await email.SendAsync(leave.User.Email!, "Leave status updated", $"<p>Your leave {leave.ApplicationNumber} is {next}.</p>", ct);
         await db.SaveChangesAsync(ct);
@@ -241,7 +269,7 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
         if (next == ExpenseClaimStatus.ApprovedByManager) { claim.ManagerApprovedAt = DateTime.UtcNow; claim.ManagerRemarks = remarks; }
         if (next is ExpenseClaimStatus.ApprovedByFinance or ExpenseClaimStatus.Paid) { claim.FinanceApprovedAt ??= DateTime.UtcNow; claim.FinanceRemarks = remarks; }
         if (next == ExpenseClaimStatus.Paid) claim.PaidAt = DateTime.UtcNow;
-        claim.History.Add(new ExpenseApprovalHistory { ActionBy = actorId, Action = action, Remarks = remarks });
+        await AddEntityAsync(new ExpenseApprovalHistory { ExpenseClaimId = id, ActionBy = actorId, Action = action, Remarks = remarks }, ct);
         AddNotification(claim.UserId, "Expense status updated", $"{claim.ClaimNumber} is {next}.", NotificationType.ExpenseStatus, claim.Id, nameof(ExpenseClaim));
         await db.SaveChangesAsync(ct);
         return await GetExpenseDto(id, ct);

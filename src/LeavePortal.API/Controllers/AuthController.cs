@@ -12,7 +12,7 @@ namespace LeavePortal.API.Controllers;
 public sealed class AuthController(UserManager<ApplicationUser> users, SignInManager<ApplicationUser> signIn, ITokenService tokens) : BaseApiController
 {
     [AllowAnonymous, HttpPost("login"), EnableRateLimiting("auth")]
-    public async Task<ActionResult<ApiResponse<AuthResult>>> Login(LoginRequest request, CancellationToken ct)
+    public async Task<ActionResult<ApiResponse<AuthResult>>> Login([FromBody] LoginRequest request, CancellationToken ct)
     {
         var user = await users.FindByEmailAsync(request.Email);
         if (user is null || !user.IsActive) throw new UnauthorizedAccessException("Invalid credentials.");
@@ -22,13 +22,13 @@ public sealed class AuthController(UserManager<ApplicationUser> users, SignInMan
     }
 
     [AllowAnonymous, HttpPost("refresh")]
-    public async Task<ActionResult<ApiResponse<AuthResult>>> Refresh(RefreshRequest request, CancellationToken ct) => OkResponse(await tokens.RefreshAsync(request.RefreshToken, ct));
+    public async Task<ActionResult<ApiResponse<AuthResult>>> Refresh([FromBody] RefreshRequest request, CancellationToken ct) => OkResponse(await tokens.RefreshAsync(request.RefreshToken, ct));
 
     [HttpPost("logout")]
-    public async Task<ActionResult<ApiResponse<object>>> Logout(RefreshRequest request, CancellationToken ct) { await tokens.RevokeAsync(request.RefreshToken, ct); return OkResponse<object>(new { }); }
+    public async Task<ActionResult<ApiResponse<object>>> Logout([FromBody] RefreshRequest request, CancellationToken ct) { await tokens.RevokeAsync(request.RefreshToken, ct); return OkResponse<object>(new { }); }
 
     [AllowAnonymous, HttpPost("forgot-password"), EnableRateLimiting("auth")]
-    public async Task<ActionResult<ApiResponse<object>>> ForgotPassword(ForgotPasswordRequest request)
+    public async Task<ActionResult<ApiResponse<object>>> ForgotPassword([FromBody] ForgotPasswordRequest request)
     {
         var user = await users.FindByEmailAsync(request.Email);
         if (user is not null) await users.GeneratePasswordResetTokenAsync(user);
@@ -36,7 +36,7 @@ public sealed class AuthController(UserManager<ApplicationUser> users, SignInMan
     }
 
     [AllowAnonymous, HttpPost("reset-password")]
-    public async Task<ActionResult<ApiResponse<object>>> ResetPassword(ResetPasswordRequest request)
+    public async Task<ActionResult<ApiResponse<object>>> ResetPassword([FromBody] ResetPasswordRequest request)
     {
         var user = await users.FindByEmailAsync(request.Email) ?? throw new InvalidOperationException("Invalid reset request.");
         var result = await users.ResetPasswordAsync(user, request.Token, request.NewPassword);
@@ -45,7 +45,7 @@ public sealed class AuthController(UserManager<ApplicationUser> users, SignInMan
     }
 
     [HttpPost("change-password")]
-    public async Task<ActionResult<ApiResponse<object>>> ChangePassword(ChangePasswordRequest request)
+    public async Task<ActionResult<ApiResponse<object>>> ChangePassword([FromBody] ChangePasswordRequest request)
     {
         var user = await users.FindByIdAsync(UserId.ToString()) ?? throw new UnauthorizedAccessException("User not found.");
         var result = await users.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);

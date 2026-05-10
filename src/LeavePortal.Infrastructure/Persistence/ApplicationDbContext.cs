@@ -57,8 +57,18 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             b.Property(x => x.Reason).HasMaxLength(500);
             b.HasOne(x => x.Manager).WithMany().HasForeignKey(x => x.ManagerId).OnDelete(DeleteBehavior.Restrict);
         });
+        builder.Entity<LeaveApprovalHistory>(b =>
+        {
+            b.HasOne(x => x.LeaveApplication).WithMany(x => x.History).HasForeignKey(x => x.LeaveApplicationId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.Actor).WithMany().HasForeignKey(x => x.ActionBy).OnDelete(DeleteBehavior.Restrict);
+        });
         builder.Entity<ExpenseClaim>(b => { b.HasIndex(x => x.ClaimNumber).IsUnique(); b.Property(x => x.TotalAmount).HasPrecision(18, 2); });
         builder.Entity<ExpenseItem>(b => b.Property(x => x.Amount).HasPrecision(18, 2));
+        builder.Entity<ExpenseApprovalHistory>(b =>
+        {
+            b.HasOne(x => x.ExpenseClaim).WithMany(x => x.History).HasForeignKey(x => x.ExpenseClaimId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.Actor).WithMany().HasForeignKey(x => x.ActionBy).OnDelete(DeleteBehavior.Restrict);
+        });
         builder.Entity<PublicHoliday>().HasIndex(x => x.Date).IsUnique();
         builder.Entity<RefreshToken>().HasIndex(x => x.TokenHash).IsUnique();
     }

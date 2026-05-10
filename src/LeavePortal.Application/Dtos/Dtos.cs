@@ -26,7 +26,7 @@ public sealed record UpsertHolidayRequest(string Name, DateOnly Date, bool IsOpt
 
 public sealed record ExpenseClaimDto(Guid Id, string ClaimNumber, Guid UserId, string EmployeeName, string Title, string? Description, decimal TotalAmount, string Currency, ExpenseClaimStatus Status, DateTime? SubmittedAt, IReadOnlyList<ExpenseItemDto> Items, string? ManagerRemarks, string? FinanceRemarks);
 public sealed record ExpenseItemDto(Guid Id, ExpenseCategory Category, string Description, decimal Amount, DateOnly ExpenseDate, string? ReceiptUrl, string? ReceiptFileName, bool IsReimbursable);
-public sealed record UpsertExpenseClaimRequest(string Title, string? Description, string Currency);
+public sealed record UpsertExpenseClaimRequest(string Title, string? Description, string Currency, decimal Amount);
 public sealed record UpsertExpenseItemRequest(ExpenseCategory Category, string Description, decimal Amount, DateOnly ExpenseDate, bool IsReimbursable);
 
 public sealed record NotificationDto(Guid Id, string Title, string Message, NotificationType Type, bool IsRead, Guid? RelatedEntityId, string? RelatedEntityType, DateTime CreatedAt);

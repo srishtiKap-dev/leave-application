@@ -14,6 +14,7 @@ export const approveHrLeave = (id: string, remarks?: string) => unwrap<LeaveAppl
 export const rejectHrLeave = (id: string, remarks?: string) => unwrap<LeaveApplication>(api.post(`/hr/leave-applications/${id}/reject`, { remarks }));
 export const expenses = (scope = '/expense-claims', search?: string) => unwrap<PagedResult<ExpenseClaim>>(api.get(scope, { params: search ? { search } : undefined }));
 export const saveExpense = (body: unknown) => unwrap<ExpenseClaim>(api.post('/expense-claims', body));
+export const submitExpense = (id: string) => unwrap<ExpenseClaim>(api.post(`/expense-claims/${id}/submit`));
 export const approveExpense = (id: string, remarks?: string) => unwrap<ExpenseClaim>(api.post(`/expense-approvals/${id}/approve`, { remarks }));
 export const rejectExpense = (id: string, remarks?: string) => unwrap<ExpenseClaim>(api.post(`/expense-approvals/${id}/reject`, { remarks }));
 export const approveFinanceExpense = (id: string, remarks?: string) => unwrap<ExpenseClaim>(api.post(`/finance/expense-claims/${id}/approve`, { remarks }));
@@ -24,3 +25,4 @@ export const users = (search?: string) => unwrap<PagedResult<User>>(api.get('/us
 export const managers = () => unwrap<User[]>(api.get('/users/managers'));
 export const createUser = (body: UpsertUser) => unwrap<User>(api.post('/users', body));
 export const updateUser = (id: string, body: UpsertUser) => unwrap<User>(api.put(`/users/${id}`, body));
+export const deleteUser = (id: string) => unwrap<object>(api.delete(`/users/${id}`));

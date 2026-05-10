@@ -5,11 +5,13 @@ import { useDropzone } from 'react-dropzone';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { expenses, saveExpense } from '../../api/portal';
+import { expenses, saveExpense, submitExpense } from '../../api/portal';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 
 const money = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });
+
+type ExpenseForm = { title: string; description: string; currency: string; amount: number };
 
 export function ExpenseListPage() {
   const { data } = useQuery({ queryKey: ['expenses'], queryFn: () => expenses() });
@@ -29,13 +31,24 @@ export function ExpenseFormPage() {
     accept: { 'application/pdf': ['.pdf'] },
     onDropRejected: (rejections) => setReceiptError(rejections[0]?.errors[0]?.code === 'file-too-large' ? 'PDF must be 5MB or smaller.' : 'Only PDF receipts are allowed.')
   });
-  const { register, handleSubmit } = useForm({ defaultValues: { title: '', description: '', currency: 'INR' } });
-  const mutation = useMutation({ mutationFn: saveExpense, onSuccess: () => { toast.success('Expense saved'); qc.invalidateQueries({ queryKey: ['expenses'] }); } });
+  const { register, handleSubmit, formState: { errors } } = useForm<ExpenseForm>({ defaultValues: { title: '', description: '', currency: 'INR', amount: 0 } });
+  const mutation = useMutation({
+    mutationFn: async (body: ExpenseForm) => {
+      const claim = await saveExpense({ ...body, amount: Number(body.amount) });
+      return submitExpense(claim.id);
+    },
+    onSuccess: () => { toast.success('Expense submitted'); qc.invalidateQueries({ queryKey: ['expenses'] }); navigate('/expenses'); },
+    onError: (error: any) => toast.error(error?.response?.data?.errors?.[0] ?? error?.response?.data?.message ?? 'Unable to submit expense')
+  });
+
   return <form className="card grid max-w-2xl gap-4" onSubmit={handleSubmit((v) => mutation.mutate(v))}>
-    <button type="button" className="w-fit text-sm font-medium text-primary" onClick={() => navigate(-1)}>← Back</button>
+    <button type="button" className="w-fit text-sm font-medium text-primary" onClick={() => navigate(-1)}>Back</button>
     <h1 className="text-xl font-bold">New Expense Claim</h1>
-    <input className="rounded-md border p-2 dark:bg-slate-900" placeholder="Claim title" {...register('title')} />
+    <input className="rounded-md border p-2 dark:bg-slate-900" placeholder="Claim title" {...register('title', { required: 'Title is required' })} />
+    {errors.title && <span className="text-xs text-red-600">{errors.title.message}</span>}
     <textarea className="rounded-md border p-2 dark:bg-slate-900" placeholder="Description" {...register('description')} />
+    <input className="rounded-md border p-2 dark:bg-slate-900" type="number" min="1" step="0.01" placeholder="Amount" {...register('amount', { required: 'Amount is required', min: { value: 1, message: 'Amount must be greater than zero' }, valueAsNumber: true })} />
+    {errors.amount && <span className="text-xs text-red-600">{errors.amount.message}</span>}
     <input className="rounded-md border p-2 dark:bg-slate-900" {...register('currency')} />
     <div {...getRootProps()} className={`grid cursor-pointer place-items-center rounded-md border border-dashed p-8 text-center text-sm transition ${isDragActive ? 'border-primary bg-indigo-50 text-primary dark:bg-indigo-950' : 'border-slate-300 text-slate-500 dark:border-slate-700'}`}>
       <input {...getInputProps()} />
@@ -45,7 +58,7 @@ export function ExpenseFormPage() {
     </div>
     {receipt && <div className="flex items-center gap-2 rounded-md bg-slate-100 p-2 text-sm dark:bg-slate-800"><FileText size={16} />{receipt.name}</div>}
     {receiptError && <p className="text-sm text-red-600">{receiptError}</p>}
-    <Button>Save Draft</Button>
+    <Button disabled={mutation.isPending}>{mutation.isPending ? 'Submitting...' : 'Submit Expense'}</Button>
   </form>;
 }
 

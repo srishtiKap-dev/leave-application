@@ -6,10 +6,15 @@ import type { Role } from '../types';
 
 const links = [
   ['Dashboard', '/dashboard', LayoutDashboard, ['Employee', 'Manager', 'HRAdmin', 'SuperAdmin']],
-  ['Leaves', '/leaves', CalendarDays, ['Employee', 'Manager', 'HRAdmin', 'SuperAdmin']],
-  ['Expenses', '/expenses', CreditCard, ['Employee', 'Manager', 'HRAdmin', 'SuperAdmin']],
-  ['Manager', '/manager/dashboard', Users, ['Manager', 'HRAdmin', 'SuperAdmin']],
-  ['HR', '/hr/dashboard', Users, ['HRAdmin', 'SuperAdmin']],
+  ['My Leaves', '/leaves', CalendarDays, ['Employee', 'Manager', 'HRAdmin', 'SuperAdmin']],
+  ['My Expenses', '/expenses', CreditCard, ['Employee', 'Manager', 'HRAdmin', 'SuperAdmin']],
+  ['Manager Dashboard', '/manager/dashboard', LayoutDashboard, ['Manager', 'HRAdmin', 'SuperAdmin']],
+  ['Leave Approvals', '/manager/leaves', CalendarDays, ['Manager', 'HRAdmin', 'SuperAdmin']],
+  ['Expense Approvals', '/manager/expenses', CreditCard, ['Manager', 'HRAdmin', 'SuperAdmin']],
+  ['HR Dashboard', '/hr/dashboard', LayoutDashboard, ['HRAdmin', 'SuperAdmin']],
+  ['HR Leaves', '/hr/leaves', CalendarDays, ['HRAdmin', 'SuperAdmin']],
+  ['HR Expenses', '/hr/expenses', CreditCard, ['HRAdmin', 'SuperAdmin']],
+  ['Employees', '/hr/users', Users, ['HRAdmin', 'SuperAdmin']],
   ['Notifications', '/notifications', Bell, ['Employee', 'Manager', 'HRAdmin', 'SuperAdmin']]
 ] as const;
 

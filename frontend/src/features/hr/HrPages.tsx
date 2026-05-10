@@ -3,7 +3,7 @@ import type React from 'react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { approveFinanceExpense, approveHrLeave, createUser, dashboard, expenses, leaves, managers, markExpensePaid, rejectFinanceExpense, rejectHrLeave, updateUser, users } from '../../api/portal';
+import { approveFinanceExpense, approveHrLeave, createUser, dashboard, deleteUser, expenses, leaves, managers, markExpensePaid, rejectFinanceExpense, rejectHrLeave, updateUser, users } from '../../api/portal';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import type { Role, UpsertUser, User } from '../../types';
@@ -52,9 +52,10 @@ export function HrUsers() {
   const debounced = useDebounced(search);
   const { data } = useQuery({ queryKey: ['users', debounced], queryFn: () => users(debounced) });
   const save = useMutation({ mutationFn: (body: UpsertUser) => editing ? updateUser(editing.id, body) : createUser(body), onSuccess: () => { toast.success('Employee saved'); setOpen(false); setEditing(null); qc.invalidateQueries({ queryKey: ['users'] }); } });
+  const remove = useMutation({ mutationFn: deleteUser, onSuccess: () => { toast.success('Employee deactivated'); qc.invalidateQueries({ queryKey: ['users'] }); } });
   return <div className="grid gap-4">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><h1 className="text-xl font-bold">User Management</h1><div className="flex gap-2"><input className="rounded-md border p-2 text-sm dark:bg-slate-900" placeholder="Search employees" value={search} onChange={(e) => setSearch(e.target.value)} /><Button onClick={() => { setEditing(null); setOpen(true); }}>Create Employee</Button></div></div>
-    <Table title="" rows={data?.items.map((x) => [x.employeeId, `${x.firstName} ${x.lastName}`, x.email, x.department, x.designation, <Button onClick={() => { setEditing(x); setOpen(true); }}>Edit</Button>]) ?? []} />
+    <Table title="" rows={data?.items.map((x) => [x.employeeId, `${x.firstName} ${x.lastName}`, x.email, x.department, x.designation, <div className="flex gap-2"><Button onClick={() => { setEditing(x); setOpen(true); }}>Edit</Button><Button className="bg-slate-600 hover:bg-slate-700" onClick={() => remove.mutate(x.id)}>Deactivate</Button></div>]) ?? []} />
     {open && <UserDrawer user={editing} onClose={() => { setOpen(false); setEditing(null); }} onSave={(body) => save.mutate(body)} />}
   </div>;
 }

@@ -28,6 +28,7 @@ public sealed class UpsertExpenseClaimRequestValidator : AbstractValidator<Upser
     {
         RuleFor(x => x.Title).NotEmpty().MaximumLength(150);
         RuleFor(x => x.Currency).NotEmpty().Length(3);
+        RuleFor(x => x.Amount).GreaterThan(0);
     }
 }
 

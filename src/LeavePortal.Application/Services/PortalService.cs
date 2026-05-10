@@ -123,14 +123,20 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
 
     public async Task<LeaveApplicationDto> ApproveLeaveByHrAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct)
     {
-        return await ChangeLeave(id, actorId, LeaveApplicationStatus.ApprovedByManager, LeaveApplicationStatus.ApprovedByHR, LeaveApprovalAction.ApprovedByHR, remarks, true, ct);
+        var leave = await db.LeaveApplications.FirstAsync(x => x.Id == id, ct);
+        if (leave.Status is not (LeaveApplicationStatus.Pending or LeaveApplicationStatus.ApprovedByManager)) throw new InvalidOperationException("Leave must be Pending or ApprovedByManager.");
+        if (leave.Status == LeaveApplicationStatus.Pending) await MovePendingToUsed(id, ct);
+        return await ChangeLeave(id, actorId, leave.Status, LeaveApplicationStatus.ApprovedByHR, LeaveApprovalAction.ApprovedByHR, remarks, true, ct);
     }
 
     public async Task<LeaveApplicationDto> RejectLeaveAsync(Guid id, Guid actorId, string? remarks, bool hr, CancellationToken ct)
     {
-        var required = hr ? LeaveApplicationStatus.ApprovedByManager : LeaveApplicationStatus.Pending;
+        var leave = await db.LeaveApplications.FirstAsync(x => x.Id == id, ct);
+        var required = hr ? leave.Status : LeaveApplicationStatus.Pending;
+        if (hr && required is not (LeaveApplicationStatus.Pending or LeaveApplicationStatus.ApprovedByManager)) throw new InvalidOperationException("Leave must be Pending or ApprovedByManager.");
         var action = hr ? LeaveApprovalAction.RejectedByHR : LeaveApprovalAction.RejectedByManager;
-        if (hr) await RestoreUsed(id, ct);
+        if (hr && required == LeaveApplicationStatus.Pending) await RestorePending(id, ct);
+        else if (hr) await RestoreUsed(id, ct);
         else await RestorePending(id, ct);
         var dto = await ChangeLeave(id, actorId, required, LeaveApplicationStatus.Rejected, action, remarks, hr, ct);
         return dto;
@@ -167,7 +173,7 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
     public async Task<ExpenseClaimDto> UpsertExpenseClaimAsync(Guid userId, Guid? id, UpsertExpenseClaimRequest request, CancellationToken ct)
     {
         var claim = id.HasValue ? await db.ExpenseClaims.Include(x => x.Items).FirstAsync(x => x.Id == id && x.UserId == userId && x.Status == ExpenseClaimStatus.Draft, ct) : new ExpenseClaim { UserId = userId, ClaimNumber = $"EXP-{DateTime.UtcNow.Year}-{await db.ExpenseClaims.CountAsync(ct) + 1:00000}" };
-        claim.Title = request.Title; claim.Description = request.Description; claim.Currency = request.Currency; claim.UpdatedAt = DateTime.UtcNow;
+        claim.Title = request.Title; claim.Description = request.Description; claim.Currency = request.Currency; claim.TotalAmount = request.Amount; claim.UpdatedAt = DateTime.UtcNow;
         await AddIfNew(claim, id, ct); await db.SaveChangesAsync(ct); return await GetExpenseDto(claim.Id, ct);
     }
 
@@ -212,9 +218,19 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
     }
 
     public Task<ExpenseClaimDto> ApproveExpenseByManagerAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct) => ChangeExpense(id, actorId, ExpenseClaimStatus.Submitted, ExpenseClaimStatus.ApprovedByManager, ExpenseApprovalAction.ApprovedByManager, remarks, ct);
-    public Task<ExpenseClaimDto> ApproveExpenseByFinanceAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct) => ChangeExpense(id, actorId, ExpenseClaimStatus.ApprovedByManager, ExpenseClaimStatus.ApprovedByFinance, ExpenseApprovalAction.ApprovedByFinance, remarks, ct);
+    public async Task<ExpenseClaimDto> ApproveExpenseByFinanceAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct)
+    {
+        var claim = await db.ExpenseClaims.FirstAsync(x => x.Id == id, ct);
+        if (claim.Status is not (ExpenseClaimStatus.Submitted or ExpenseClaimStatus.ApprovedByManager)) throw new InvalidOperationException("Expense must be Submitted or ApprovedByManager.");
+        return await ChangeExpense(id, actorId, claim.Status, ExpenseClaimStatus.ApprovedByFinance, ExpenseApprovalAction.ApprovedByFinance, remarks, ct);
+    }
     public Task<ExpenseClaimDto> RejectExpenseByManagerAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct) => ChangeExpense(id, actorId, ExpenseClaimStatus.Submitted, ExpenseClaimStatus.Rejected, ExpenseApprovalAction.RejectedByManager, remarks, ct);
-    public Task<ExpenseClaimDto> RejectExpenseByFinanceAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct) => ChangeExpense(id, actorId, ExpenseClaimStatus.ApprovedByManager, ExpenseClaimStatus.Rejected, ExpenseApprovalAction.RejectedByFinance, remarks, ct);
+    public async Task<ExpenseClaimDto> RejectExpenseByFinanceAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct)
+    {
+        var claim = await db.ExpenseClaims.FirstAsync(x => x.Id == id, ct);
+        if (claim.Status is not (ExpenseClaimStatus.Submitted or ExpenseClaimStatus.ApprovedByManager)) throw new InvalidOperationException("Expense must be Submitted or ApprovedByManager.");
+        return await ChangeExpense(id, actorId, claim.Status, ExpenseClaimStatus.Rejected, ExpenseApprovalAction.RejectedByFinance, remarks, ct);
+    }
     public Task<ExpenseClaimDto> MarkExpensePaidAsync(Guid id, Guid actorId, CancellationToken ct) => ChangeExpense(id, actorId, ExpenseClaimStatus.ApprovedByFinance, ExpenseClaimStatus.Paid, ExpenseApprovalAction.Paid, "Paid", ct);
 
     public async Task<PagedResult<NotificationDto>> GetNotificationsAsync(Guid userId, PageRequest page, CancellationToken ct)

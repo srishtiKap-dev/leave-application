@@ -23,7 +23,11 @@ export function ManagerLeaves() {
   const { data } = useQuery({ queryKey: ['manager-leaves', debounced], queryFn: () => leaves('/leave-approvals/pending', debounced) });
   const approve = useMutation({ mutationFn: (id: string) => approveLeave(id, 'Approved'), onSuccess: () => { toast.success('Approved'); qc.invalidateQueries({ queryKey: ['manager-leaves'] }); } });
   const reject = useMutation({ mutationFn: (id: string) => rejectLeave(id, 'Rejected'), onSuccess: () => { toast.success('Rejected'); qc.invalidateQueries({ queryKey: ['manager-leaves'] }); } });
-  return <div className="card"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><h1 className="text-xl font-bold">Leave Approvals</h1><input className="rounded-md border p-2 text-sm dark:bg-slate-900" placeholder="Search leaves" value={search} onChange={(e) => setSearch(e.target.value)} /></div><div className="mt-4 grid gap-3">{data?.items.map((x) => <div className="grid gap-3 rounded-md border p-3 dark:border-slate-800 sm:grid-cols-[1fr_auto_auto_auto] sm:items-center" key={x.id}><span>{x.employeeName} {x.leaveTypeCode}</span><StatusBadge status={x.status} /><Button onClick={() => approve.mutate(x.id)}>Approve</Button><Button type="button" className="bg-slate-600 hover:bg-slate-700" onClick={() => reject.mutate(x.id)}>Reject</Button></div>)}</div></div>;
+  return <div className="card"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><h1 className="text-xl font-bold">Leave Approvals</h1><input className="rounded-md border p-2 text-sm dark:bg-slate-900" placeholder="Search leaves" value={search} onChange={(e) => setSearch(e.target.value)} /></div><div className="mt-4 grid gap-3">{data?.items.map((x) => <div className="grid gap-3 rounded-md border p-3 dark:border-slate-800 sm:grid-cols-[1fr_auto_auto_auto] sm:items-center" key={x.id}><span className="flex items-center gap-2">{x.employeeName}<LeaveTypeBadge code={x.leaveTypeCode} /></span><StatusBadge status={x.status} /><Button onClick={() => approve.mutate(x.id)}>Approve</Button><Button type="button" className="bg-slate-600 hover:bg-slate-700" onClick={() => reject.mutate(x.id)}>Reject</Button></div>)}</div></div>;
+}
+
+function LeaveTypeBadge({ code }: { code: string }) {
+  return <span className="badge bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">{code}</span>;
 }
 
 export function ManagerExpenses() {

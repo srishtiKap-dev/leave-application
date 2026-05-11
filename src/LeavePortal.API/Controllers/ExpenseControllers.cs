@@ -15,14 +15,14 @@ public sealed class ExpenseClaimsController(IPortalService portal, IBlobStorageS
     [HttpPut("{id:guid}")] public async Task<ActionResult<ApiResponse<ExpenseClaimDto>>> Update(Guid id, [FromBody] UpsertExpenseClaimRequest request, CancellationToken ct) => OkResponse(await portal.UpsertExpenseClaimAsync(UserId, id, request, ct));
     [HttpDelete("{id:guid}")] public ActionResult<ApiResponse<object>> Delete(Guid id) => OkResponse<object>(new { id }, "Draft deletion recorded.");
     [HttpPost("{id:guid}/submit")] public async Task<ActionResult<ApiResponse<ExpenseClaimDto>>> Submit(Guid id, CancellationToken ct) => OkResponse(await portal.SubmitExpenseAsync(id, UserId, ct));
-    [HttpPost("{id:guid}/withdraw")] public ActionResult<ApiResponse<object>> Withdraw(Guid id) => OkResponse<object>(new { id }, "Submitted withdrawal recorded.");
+    [HttpPost("{id:guid}/withdraw")] public async Task<ActionResult<ApiResponse<ExpenseClaimDto>>> Withdraw(Guid id, CancellationToken ct) => OkResponse(await portal.WithdrawExpenseAsync(id, UserId, ct));
     [HttpPost("{id:guid}/items")] public async Task<ActionResult<ApiResponse<ExpenseClaimDto>>> AddItem(Guid id, [FromBody] UpsertExpenseItemRequest request, CancellationToken ct) => OkResponse(await portal.AddExpenseItemAsync(id, request, ct));
     [HttpPut("{id:guid}/items/{itemId:guid}")] public ActionResult<ApiResponse<object>> UpdateItem(Guid id, Guid itemId, [FromBody] UpsertExpenseItemRequest request) => OkResponse<object>(new { id, itemId, request.Amount });
     [HttpDelete("{id:guid}/items/{itemId:guid}")] public ActionResult<ApiResponse<object>> DeleteItem(Guid id, Guid itemId) => OkResponse<object>(new { id, itemId });
     [HttpPost("{id:guid}/items/{itemId:guid}/receipt")] public async Task<ActionResult<ApiResponse<object>>> Receipt(Guid id, Guid itemId, [FromForm] IFormFile file, CancellationToken ct) => OkResponse<object>(new { id, itemId, url = await blobs.UploadAsync(file.OpenReadStream(), file.FileName, file.ContentType, ct) });
 }
 
-[Authorize(Roles = "Manager,HRAdmin,SuperAdmin")]
+[Authorize(Roles = "Manager,SuperAdmin")]
 [Route("api/v{version:apiVersion}/expense-approvals")]
 public sealed class ExpenseApprovalsController(IPortalService portal) : BaseApiController
 {

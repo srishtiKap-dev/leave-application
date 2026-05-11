@@ -24,7 +24,7 @@ const router = createBrowserRouter([
     { path: '/leaves', element: <MyLeavesPage /> }, { path: '/leaves/apply', element: <ApplyLeavePage /> }, { path: '/leaves/calendar', element: <LeaveCalendarPage /> },
     { path: '/expenses', element: <ExpenseListPage /> }, { path: '/expenses/new', element: <ExpenseFormPage /> }, { path: '/expenses/:id', element: <ExpenseDetailPage /> }, { path: '/expenses/:id/edit', element: <ExpenseFormPage /> },
     { path: '/profile', element: <ProfilePage /> }, { path: '/notifications', element: <NotificationsPage /> },
-    { element: <RoleRoute roles={['Manager', 'HRAdmin', 'SuperAdmin']} />, children: [
+    { element: <RoleRoute roles={['Manager', 'SuperAdmin']} />, children: [
       { path: '/manager/dashboard', element: <ManagerDashboard /> }, { path: '/manager/leaves', element: <ManagerLeaves /> }, { path: '/manager/expenses', element: <ManagerExpenses /> }, { path: '/manager/team-calendar', element: <LeaveCalendarPage /> }
     ] },
     { element: <RoleRoute roles={['HRAdmin', 'SuperAdmin']} />, children: [

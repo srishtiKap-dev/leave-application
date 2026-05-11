@@ -195,6 +195,16 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
         await db.SaveChangesAsync(ct); return await GetExpenseDto(claimId, ct);
     }
 
+    public async Task<ExpenseClaimDto> WithdrawExpenseAsync(Guid claimId, Guid actorId, CancellationToken ct)
+    {
+        var claim = await db.ExpenseClaims.FirstAsync(x => x.Id == claimId && x.UserId == actorId && x.Status == ExpenseClaimStatus.Submitted, ct);
+        claim.Status = ExpenseClaimStatus.Withdrawn;
+        claim.UpdatedAt = DateTime.UtcNow;
+        await AddEntityAsync(new ExpenseApprovalHistory { ExpenseClaimId = claimId, ActionBy = actorId, Action = ExpenseApprovalAction.Withdrawn, Remarks = "Withdrawn" }, ct);
+        await db.SaveChangesAsync(ct);
+        return await GetExpenseDto(claimId, ct);
+    }
+
     public async Task<PagedResult<ExpenseClaimDto>> GetExpensesAsync(Guid? userId, Guid? managerId, string? status, string? search, PageRequest page, CancellationToken ct)
     {
         var query = db.ExpenseClaims.Include(x => x.User).Include(x => x.Items).AsQueryable();

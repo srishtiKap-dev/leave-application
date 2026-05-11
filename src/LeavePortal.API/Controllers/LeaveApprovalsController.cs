@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace LeavePortal.API.Controllers;
 
-[Authorize(Roles = "Manager,HRAdmin,SuperAdmin")]
+[Authorize(Roles = "Manager,SuperAdmin")]
 [Route("api/v{version:apiVersion}/leave-approvals")]
 public sealed class LeaveApprovalsController(IPortalService portal) : BaseApiController
 {

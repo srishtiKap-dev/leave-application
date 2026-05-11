@@ -5,7 +5,7 @@ import { useDropzone } from 'react-dropzone';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { expenses, saveExpense, submitExpense } from '../../api/portal';
+import { expenses, saveExpense, submitExpense, withdrawExpense } from '../../api/portal';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 
@@ -14,8 +14,10 @@ const money = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR
 type ExpenseForm = { title: string; description: string; currency: string; amount: number };
 
 export function ExpenseListPage() {
+  const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ['expenses'], queryFn: () => expenses() });
-  return <div className="card overflow-x-auto"><div className="mb-4 flex justify-between"><h1 className="text-xl font-bold">My Expense Claims</h1><a className="text-primary" href="/expenses/new">Create new claim</a></div><table className="w-full text-sm"><thead><tr className="text-left text-slate-500"><th className="p-2">Number</th><th>Title</th><th>Amount</th><th>Status</th></tr></thead><tbody>{data?.items.map((x) => <tr className="border-t border-slate-200 dark:border-slate-800" key={x.id}><td className="p-2">{x.claimNumber}</td><td>{x.title}</td><td>{money.format(x.totalAmount)}</td><td><StatusBadge status={x.status} kind="expense" /></td></tr>)}</tbody></table></div>;
+  const withdraw = useMutation({ mutationFn: withdrawExpense, onSuccess: () => { toast.success('Expense withdrawn'); qc.invalidateQueries({ queryKey: ['expenses'] }); } });
+  return <div className="card overflow-x-auto"><div className="mb-4 flex justify-between"><h1 className="text-xl font-bold">My Expense Claims</h1><a className="text-primary" href="/expenses/new">Create new claim</a></div><table className="w-full text-sm"><thead><tr className="text-left text-slate-500"><th className="p-2">Number</th><th>Title</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody>{data?.items.map((x) => <tr className="border-t border-slate-200 dark:border-slate-800" key={x.id}><td className="p-2">{x.claimNumber}</td><td>{x.title}</td><td>{money.format(x.totalAmount)}</td><td><StatusBadge status={x.status} kind="expense" /></td><td>{isSubmitted(x.status) && <Button className="h-8 bg-slate-600 px-3 hover:bg-slate-700" onClick={() => withdraw.mutate(x.id)}>Withdraw</Button>}</td></tr>)}</tbody></table></div>;
 }
 
 export function ExpenseFormPage() {
@@ -64,4 +66,8 @@ export function ExpenseFormPage() {
 
 export function ExpenseDetailPage() {
   return <div className="card"><h1 className="text-xl font-bold">Expense Claim Detail</h1><p className="mt-3 text-sm text-slate-500">Claim summary, line items, approval timeline, and remarks appear here.</p></div>;
+}
+
+function isSubmitted(status: string | number) {
+  return status === 'Submitted' || status === 1;
 }

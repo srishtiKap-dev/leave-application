@@ -48,6 +48,7 @@ public interface IPortalService
     Task<ExpenseClaimDto> UpsertExpenseClaimAsync(Guid userId, Guid? id, UpsertExpenseClaimRequest request, CancellationToken ct);
     Task<ExpenseClaimDto> AddExpenseItemAsync(Guid claimId, UpsertExpenseItemRequest request, CancellationToken ct);
     Task<ExpenseClaimDto> SubmitExpenseAsync(Guid claimId, Guid actorId, CancellationToken ct);
+    Task<ExpenseClaimDto> WithdrawExpenseAsync(Guid claimId, Guid actorId, CancellationToken ct);
     Task<PagedResult<ExpenseClaimDto>> GetExpensesAsync(Guid? userId, Guid? managerId, string? status, string? search, PageRequest page, CancellationToken ct);
     Task<ExpenseClaimDto> ApproveExpenseByManagerAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct);
     Task<ExpenseClaimDto> ApproveExpenseByFinanceAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct);

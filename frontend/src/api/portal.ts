@@ -12,9 +12,11 @@ export const approveLeave = (id: string, remarks?: string) => unwrap<LeaveApplic
 export const rejectLeave = (id: string, remarks?: string) => unwrap<LeaveApplication>(api.post(`/leave-approvals/${id}/reject`, { remarks }));
 export const approveHrLeave = (id: string, remarks?: string) => unwrap<LeaveApplication>(api.post(`/hr/leave-applications/${id}/approve`, { remarks }));
 export const rejectHrLeave = (id: string, remarks?: string) => unwrap<LeaveApplication>(api.post(`/hr/leave-applications/${id}/reject`, { remarks }));
+export const withdrawLeave = (id: string) => unwrap<LeaveApplication>(api.delete(`/leave-applications/${id}`));
 export const expenses = (scope = '/expense-claims', search?: string) => unwrap<PagedResult<ExpenseClaim>>(api.get(scope, { params: search ? { search } : undefined }));
 export const saveExpense = (body: unknown) => unwrap<ExpenseClaim>(api.post('/expense-claims', body));
 export const submitExpense = (id: string) => unwrap<ExpenseClaim>(api.post(`/expense-claims/${id}/submit`));
+export const withdrawExpense = (id: string) => unwrap<ExpenseClaim>(api.post(`/expense-claims/${id}/withdraw`));
 export const approveExpense = (id: string, remarks?: string) => unwrap<ExpenseClaim>(api.post(`/expense-approvals/${id}/approve`, { remarks }));
 export const rejectExpense = (id: string, remarks?: string) => unwrap<ExpenseClaim>(api.post(`/expense-approvals/${id}/reject`, { remarks }));
 export const approveFinanceExpense = (id: string, remarks?: string) => unwrap<ExpenseClaim>(api.post(`/finance/expense-claims/${id}/approve`, { remarks }));

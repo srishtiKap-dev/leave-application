@@ -30,7 +30,11 @@ export function HrLeaves() {
   const { data } = useQuery({ queryKey: ['hr-leaves', debounced], queryFn: () => leaves('/hr/leave-applications', debounced) });
   const approve = useMutation({ mutationFn: (id: string) => approveHrLeave(id, 'Approved by HR'), onSuccess: () => { toast.success('Approved'); qc.invalidateQueries({ queryKey: ['hr-leaves'] }); } });
   const reject = useMutation({ mutationFn: (id: string) => rejectHrLeave(id, 'Rejected by HR'), onSuccess: () => { toast.success('Rejected'); qc.invalidateQueries({ queryKey: ['hr-leaves'] }); } });
-  return <Table title="All Leave Applications" search={search} onSearch={setSearch} rows={data?.items.map((x) => [x.employeeName, x.leaveTypeCode, x.startDate, <StatusBadge status={x.status} />, <div className="flex gap-2"><Button onClick={() => approve.mutate(x.id)}>Approve</Button><Button className="bg-slate-600 hover:bg-slate-700" onClick={() => reject.mutate(x.id)}>Reject</Button></div>]) ?? []} />;
+  return <Table title="All Leave Applications" search={search} onSearch={setSearch} rows={data?.items.map((x) => [x.employeeName, <LeaveTypeBadge code={x.leaveTypeCode} />, x.startDate, <StatusBadge status={x.status} />, <div className="flex gap-2"><Button onClick={() => approve.mutate(x.id)}>Approve</Button><Button className="bg-slate-600 hover:bg-slate-700" onClick={() => reject.mutate(x.id)}>Reject</Button></div>]) ?? []} />;
+}
+
+function LeaveTypeBadge({ code }: { code: string }) {
+  return <span className="badge bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">{code}</span>;
 }
 
 export function HrExpenses() {

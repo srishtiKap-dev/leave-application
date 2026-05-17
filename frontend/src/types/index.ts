@@ -3,6 +3,7 @@ export type ApiResponse<T> = { success: boolean; data: T; message: string; error
 export type PagedResult<T> = { items: T[]; page: number; pageSize: number; totalCount: number; totalPages: number };
 export type User = { id: string; employeeId: string; firstName: string; lastName: string; email: string; phoneNumber?: string; department: string; designation: string; dateOfJoining?: string; managerId?: string; isActive?: boolean; roles: Role[] };
 export type UpsertUser = { employeeId: string; firstName: string; lastName: string; email: string; phoneNumber?: string; department: string; designation: string; dateOfJoining: string; managerId?: string | null; role: Role; isActive: boolean };
+export type CreateUser = UpsertUser & { password: string };
 export type AuthResult = { accessToken: string; refreshToken: string; expiresAt: string; user: User };
 export type LeaveType = { id: string; name: string; code: 'CL' | 'SL' | 'EL'; maxDaysPerYear: number; requiresDocumentation: boolean; noticeRequiredDays: number };
 export type LeaveBalance = { id: string; leaveTypeCode: string; totalAllocated: number; totalUsed: number; totalPending: number; carryForward: number; remaining: number };

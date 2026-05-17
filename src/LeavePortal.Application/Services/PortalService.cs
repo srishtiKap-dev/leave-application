@@ -256,10 +256,28 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
 
     public async Task<DashboardDto> DashboardAsync(Guid userId, string role, CancellationToken ct)
     {
-        var leaves = (await GetLeavesAsync(role == "HRAdmin" ? null : userId, role == "Manager" ? userId : null, null, DateTime.UtcNow.Year, null, null, new PageRequest(1, 5), ct)).Items;
-        var expenses = (await GetExpensesAsync(role == "HRAdmin" ? null : userId, role == "Manager" ? userId : null, null, null, new PageRequest(1, 5), ct)).Items;
+        var leaveQuery = db.LeaveApplications.Include(x => x.User).Include(x => x.LeaveType)
+            .Where(x => x.StartDate.Year == DateTime.UtcNow.Year
+                && x.Status != LeaveApplicationStatus.Draft
+                && x.Status != LeaveApplicationStatus.Rejected
+                && x.Status != LeaveApplicationStatus.Cancelled
+                && x.Status != LeaveApplicationStatus.Withdrawn);
+        if (role == "Manager") leaveQuery = leaveQuery.Where(x => x.ManagerId == userId);
+        else if (role != "HRAdmin") leaveQuery = leaveQuery.Where(x => x.UserId == userId);
+
+        var expenseQuery = db.ExpenseClaims.Include(x => x.User).Include(x => x.Items)
+            .Where(x => x.Status != ExpenseClaimStatus.Draft
+                && x.Status != ExpenseClaimStatus.Rejected
+                && x.Status != ExpenseClaimStatus.Withdrawn);
+        if (role == "Manager") expenseQuery = expenseQuery.Where(x => x.User.ManagerId == userId);
+        else if (role != "HRAdmin") expenseQuery = expenseQuery.Where(x => x.UserId == userId);
+
+        var leaveCount = await leaveQuery.CountAsync(ct);
+        var expenseCount = await expenseQuery.CountAsync(ct);
+        var leaves = (await leaveQuery.OrderByDescending(x => x.AppliedAt).Take(5).ToListAsync(ct)).Select(MapLeave).ToList();
+        var expenses = (await expenseQuery.OrderByDescending(x => x.CreatedAt).Take(5).ToListAsync(ct)).Select(MapExpense).ToList();
         var notes = (await GetNotificationsAsync(userId, new PageRequest(1, 5), ct)).Items;
-        var metrics = new List<DashboardMetric> { new("Leaves", leaves.Count, "leave"), new("Expenses", expenses.Count, "expense"), new("Unread", notes.Count(x => !x.IsRead), "notification") };
+        var metrics = new List<DashboardMetric> { new("Leaves", leaveCount, "leave"), new("Expenses", expenseCount, "expense"), new("Unread", notes.Count(x => !x.IsRead), "notification") };
         return new DashboardDto(metrics, leaves, expenses, notes);
     }
 

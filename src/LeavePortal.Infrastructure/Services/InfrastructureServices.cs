@@ -2,8 +2,6 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using Azure.Storage.Blobs;
-using Azure.Storage.Sas;
 using LeavePortal.Application.Dtos;
 using LeavePortal.Application.Interfaces;
 using LeavePortal.Domain.Entities;
@@ -70,7 +68,7 @@ public sealed class SendGridEmailService(IConfiguration config) : IEmailService
 {
     public async Task SendAsync(string to, string subject, string html, CancellationToken ct = default)
     {
-        var apiKey = config["SendGrid:ApiKey"];
+        var apiKey = config["Email:ApiKey"] ?? config["SendGrid:ApiKey"];
         if (string.IsNullOrWhiteSpace(apiKey)) return;
         var client = new SendGridClient(apiKey);
         var from = new EmailAddress(config["SendGrid:FromEmail"] ?? "noreply@company.com", config["SendGrid:FromName"] ?? "Leave Portal");
@@ -78,21 +76,27 @@ public sealed class SendGridEmailService(IConfiguration config) : IEmailService
     }
 }
 
-public sealed class AzureBlobStorageService(IConfiguration config) : IBlobStorageService
+public sealed class ConsoleEmailService : IEmailService
+{
+    public Task SendAsync(string to, string subject, string html, CancellationToken ct = default)
+    {
+        Console.WriteLine($"Email to {to}: {subject}");
+        return Task.CompletedTask;
+    }
+}
+
+public sealed class LocalBlobStorageService : IBlobStorageService
 {
     public async Task<string> UploadAsync(Stream content, string fileName, string contentType, CancellationToken ct = default)
     {
-        var container = new BlobContainerClient(config.GetConnectionString("Storage"), config["Storage:ReceiptsContainer"] ?? "receipts");
-        await container.CreateIfNotExistsAsync(cancellationToken: ct);
-        var blob = container.GetBlobClient($"{Guid.NewGuid():N}-{Path.GetFileName(fileName)}");
-        await blob.UploadAsync(content, new Azure.Storage.Blobs.Models.BlobHttpHeaders { ContentType = contentType }, cancellationToken: ct);
-        return blob.Uri.ToString();
+        var directory = Path.Combine(AppContext.BaseDirectory, "uploads");
+        Directory.CreateDirectory(directory);
+        var safeName = $"{Guid.NewGuid():N}-{Path.GetFileName(fileName)}";
+        var path = Path.Combine(directory, safeName);
+        await using var output = File.Create(path);
+        await content.CopyToAsync(output, ct);
+        return $"/uploads/{safeName}";
     }
 
-    public Task<string> CreateReadSasAsync(string blobUrl, TimeSpan ttl, CancellationToken ct = default)
-    {
-        var blob = new BlobClient(new Uri(blobUrl));
-        var sas = blob.GenerateSasUri(BlobSasPermissions.Read, DateTimeOffset.UtcNow.Add(ttl));
-        return Task.FromResult(sas.ToString());
-    }
+    public Task<string> CreateReadSasAsync(string blobUrl, TimeSpan ttl, CancellationToken ct = default) => Task.FromResult(blobUrl);
 }

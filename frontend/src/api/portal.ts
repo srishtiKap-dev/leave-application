@@ -1,5 +1,5 @@
 import { api, unwrap } from './axios';
-import type { AuthResult, Dashboard, ExpenseClaim, LeaveApplication, LeaveBalance, LeaveType, Notification, PagedResult, UpsertUser, User } from '../types';
+import type { AuthResult, CreateUser, Dashboard, ExpenseClaim, LeaveApplication, LeaveBalance, LeaveType, Notification, PagedResult, UpsertUser, User } from '../types';
 
 export const login = (email: string, password: string) => unwrap<AuthResult>(api.post('/auth/login', { email, password }));
 export const me = () => unwrap<User>(api.get('/users/me'));
@@ -25,6 +25,6 @@ export const markExpensePaid = (id: string) => unwrap<ExpenseClaim>(api.post(`/f
 export const notifications = () => unwrap<PagedResult<Notification>>(api.get('/notifications'));
 export const users = (search?: string) => unwrap<PagedResult<User>>(api.get('/users', { params: { pageSize: 100, search: search || undefined } }));
 export const managers = () => unwrap<User[]>(api.get('/users/managers'));
-export const createUser = (body: UpsertUser) => unwrap<User>(api.post('/users', body));
+export const createUser = (body: CreateUser) => unwrap<User>(api.post('/users', body));
 export const updateUser = (id: string, body: UpsertUser) => unwrap<User>(api.put(`/users/${id}`, body));
 export const deleteUser = (id: string) => unwrap<object>(api.delete(`/users/${id}`));

@@ -1,13 +1,45 @@
 import { useQuery } from '@tanstack/react-query';
-import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
+import type React from 'react';
+import { ArrowRight, Calendar, CalendarPlus, Circle, ReceiptText } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { dashboard, balances } from '../api/portal';
 import { StatusBadge } from '../components/ui/StatusBadge';
 
 export function Dashboard() {
   const { data } = useQuery({ queryKey: ['dashboard'], queryFn: () => dashboard('employee') });
   const { data: balanceData } = useQuery({ queryKey: ['balances'], queryFn: balances });
-  return <div className="grid gap-5">
-    <div className="grid gap-4 md:grid-cols-3">{balanceData?.map((b) => <div className="card" key={b.id}><div className="text-sm font-semibold text-slate-500">{b.leaveTypeCode}</div><div className="mt-2 flex items-center justify-between"><div><p className="text-3xl font-extrabold">{b.remaining}</p><p className="text-sm text-slate-500">of {b.totalAllocated + b.carryForward} days</p></div><ResponsiveContainer width={86} height={86}><PieChart><Pie data={[{ value: b.remaining }, { value: Math.max(0, b.totalAllocated - b.remaining) }]} dataKey="value" innerRadius={28} outerRadius={40}><Cell fill="#4F46E5" /><Cell fill="#E2E8F0" /></Pie></PieChart></ResponsiveContainer></div></div>)}</div>
-    <section className="grid gap-4 lg:grid-cols-3"><div className="card lg:col-span-2"><h2 className="font-bold">Upcoming leaves</h2><div className="mt-3 grid gap-2">{data?.leaves.map((x) => <div className="flex items-center justify-between rounded-md border border-slate-200 p-3 dark:border-slate-800" key={x.id}><span>{x.leaveTypeCode} {x.startDate}</span><StatusBadge status={x.status} /></div>)}</div></div><div className="card"><h2 className="font-bold">Notifications</h2><div className="mt-3 grid gap-3">{data?.notifications.map((n) => <p className="text-sm" key={n.id}>{n.title}</p>)}</div></div></section>
+  return <div className="mx-auto grid max-w-7xl gap-6">
+    <div className="mb-2"><h1 className="text-2xl font-bold text-slate-900">Employee Dashboard</h1><p className="mt-1 text-sm text-slate-500">Track your leave balances, recent claims, and approvals.</p></div>
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">{balanceData?.map((b) => <BalanceCard key={b.id} code={b.leaveTypeCode} remaining={b.remaining} total={b.totalAllocated + b.carryForward} />)}</div>
+    <div className="grid gap-4 md:grid-cols-2">
+      <ActionCard to="/leaves/apply" icon={<CalendarPlus size={22} />} title="Apply for Leave" subtitle="Submit a new leave request" tone="indigo" />
+      <ActionCard to="/expenses/new" icon={<ReceiptText size={22} />} title="New Expense Claim" subtitle="Submit a reimbursable expense" tone="emerald" />
+    </div>
+    <section className="grid gap-4 lg:grid-cols-2">
+      <ActivityCard title="My Recent Leaves" to="/leaves">{data?.leaves.slice(0, 5).map((x) => <div className="flex items-center gap-3 border-b border-slate-100 py-3 last:border-0" key={x.id}><Circle className="fill-amber-400 text-amber-400" size={10} /><div className="min-w-0 flex-1"><p className="font-medium text-slate-900">{x.leaveTypeCode}</p><p className="text-sm text-slate-500">{x.startDate} to {x.endDate}</p></div><StatusBadge status={x.status} /></div>)}</ActivityCard>
+      <ActivityCard title="My Expense Claims" to="/expenses">{data?.expenses.slice(0, 5).map((x) => <div className="flex items-center gap-3 border-b border-slate-100 py-3 last:border-0" key={x.id}><Circle className="fill-indigo-400 text-indigo-400" size={10} /><div className="min-w-0 flex-1"><p className="font-medium text-slate-900">{x.title}</p><p className="text-sm text-slate-500">{x.currency} {x.totalAmount}</p></div><StatusBadge status={x.status} kind="expense" /></div>)}</ActivityCard>
+    </section>
   </div>;
+}
+
+function BalanceCard({ code, remaining, total }: { code: string; remaining: number; total: number }) {
+  const percent = total > 0 ? Math.max(0, Math.min(100, (remaining / total) * 100)) : 0;
+  const bar = percent > 50 ? 'bg-indigo-500' : percent >= 20 ? 'bg-amber-500' : 'bg-red-500';
+  const iconTone = code === 'SL' ? 'bg-amber-50 text-amber-600' : code === 'EL' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600';
+  return <div className="card">
+    <div className={`flex h-11 w-11 items-center justify-center rounded-full ${iconTone}`}><Calendar size={20} /></div>
+    <p className="mt-5 text-sm font-medium text-slate-500">{code}</p>
+    <p className="mt-1 text-3xl font-bold text-slate-900">{remaining}</p>
+    <p className="mt-1 text-sm text-slate-400">of {total} days remaining</p>
+    <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className={`h-full ${bar}`} style={{ width: `${percent}%` }} /></div>
+  </div>;
+}
+
+function ActionCard({ to, icon, title, subtitle, tone }: { to: string; icon: React.ReactNode; title: string; subtitle: string; tone: 'indigo' | 'emerald' }) {
+  const iconClass = tone === 'emerald' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600';
+  return <Link to={to} className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:border-indigo-200 hover:shadow-md"><div className={`rounded-lg p-3 ${iconClass}`}>{icon}</div><div className="flex-1"><p className="font-semibold text-slate-900">{title}</p><p className="text-sm text-slate-500">{subtitle}</p></div><ArrowRight className="text-slate-400" size={20} /></Link>;
+}
+
+function ActivityCard({ title, to, children }: { title: string; to: string; children: React.ReactNode }) {
+  return <div className="card"><div className="flex items-center justify-between"><h2 className="font-semibold text-slate-900">{title}</h2><Link className="text-sm font-medium text-primary" to={to}>View All</Link></div><div className="mt-3">{children}</div></div>;
 }

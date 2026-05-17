@@ -3,6 +3,8 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { useNavigate, Link } from 'react-router-dom';
+import { Building2, CheckCircle2, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
+import { useState } from 'react';
 import { login } from '../../api/portal';
 import { dashboardFor, useAuth } from '../../stores/auth';
 import { Button } from '../../components/ui/Button';
@@ -13,15 +15,40 @@ type Form = z.infer<typeof schema>;
 export function LoginPage() {
   const navigate = useNavigate();
   const setAuth = useAuth((s) => s.setAuth);
+  const [showPassword, setShowPassword] = useState(false);
   const { register, handleSubmit, formState: { isSubmitting } } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: { email: 'admin@company.com', password: 'Admin@123!' } });
-  return <section className="w-full max-w-md rounded-lg bg-white p-8 shadow-xl dark:bg-slate-900">
-    <h1 className="text-2xl font-extrabold">Sign in</h1>
-    <form className="mt-6 grid gap-4" onSubmit={handleSubmit(async (values) => { const auth = await login(values.email, values.password); setAuth(auth); toast.success('Welcome back'); navigate(dashboardFor(auth.user)); })}>
-      <input className="rounded-md border border-slate-300 bg-transparent px-3 py-2 dark:border-slate-700" placeholder="Email" {...register('email')} />
-      <input className="rounded-md border border-slate-300 bg-transparent px-3 py-2 dark:border-slate-700" type="password" placeholder="Password" {...register('password')} />
-      <Button disabled={isSubmitting}>Login</Button>
-    </form>
-    <Link className="mt-4 block text-sm text-primary" to="/forgot-password">Forgot password?</Link>
+  return <section className="grid min-h-screen w-full bg-white lg:grid-cols-[3fr_2fr]">
+    <div className="hidden bg-gradient-to-br from-indigo-600 to-indigo-800 px-16 py-12 text-white lg:flex lg:flex-col lg:justify-between">
+      <div>
+        <Building2 size={64} />
+        <h1 className="mt-8 text-4xl font-bold">LeavePortal</h1>
+        <p className="mt-3 text-lg text-indigo-200">Manage leaves and expenses with ease</p>
+        <div className="mt-12 grid gap-5 text-sm font-medium">
+          {['Apply and track leaves in real-time', 'Submit and manage expense claims', 'Seamless HR and manager approvals'].map((item) => <div className="flex items-center gap-3" key={item}><CheckCircle2 size={20} />{item}</div>)}
+        </div>
+      </div>
+      <p className="text-sm text-indigo-300">LeavePortal v1.0</p>
+    </div>
+    <div className="flex min-h-screen items-center justify-center px-6 py-10">
+      <div className="w-full max-w-md">
+        <div className="mb-8 flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white"><Building2 size={22} /></div>
+        <h2 className="text-2xl font-bold text-slate-900">Welcome back</h2>
+        <p className="mt-1 text-sm text-slate-500">Sign in to your account</p>
+        <form className="mt-8 grid gap-5" onSubmit={handleSubmit(async (values) => { const auth = await login(values.email, values.password); setAuth(auth); toast.success('Welcome back'); navigate(dashboardFor(auth.user)); })}>
+          <label className="grid gap-1 text-sm">
+            <span className="font-medium text-slate-700">Email address</span>
+            <div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input className="input pl-10" placeholder="you@company.com" {...register('email')} /></div>
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span className="font-medium text-slate-700">Password</span>
+            <div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input className="input pl-10 pr-10" type={showPassword ? 'text' : 'password'} placeholder="Enter your password" {...register('password')} /><button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" onClick={() => setShowPassword((value) => !value)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>
+          </label>
+          <Link className="justify-self-end text-sm font-medium text-primary hover:text-primary-dark" to="/forgot-password">Forgot password?</Link>
+          <Button className="w-full" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="animate-spin" size={18} /> : 'Sign In'}</Button>
+        </form>
+        <p className="mt-8 text-center text-sm text-slate-500">Having trouble? Contact your HR administrator</p>
+      </div>
+    </div>
   </section>;
 }
 

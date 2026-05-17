@@ -10,6 +10,7 @@ public sealed record ForgotPasswordRequest(string Email);
 public sealed record ResetPasswordRequest(string Email, string Token, string NewPassword);
 
 public sealed record UserDto(Guid Id, string EmployeeId, string FirstName, string LastName, string Email, string? PhoneNumber, string Department, string Designation, DateTime DateOfJoining, Guid? ManagerId, bool IsActive, string? ProfilePictureUrl, IReadOnlyList<string> Roles);
+public sealed record CreateUserRequest(string EmployeeId, string FirstName, string LastName, string Email, string? PhoneNumber, string Department, string Designation, DateTime DateOfJoining, Guid? ManagerId, string Role, bool IsActive, string Password);
 public sealed record UpsertUserRequest(string EmployeeId, string FirstName, string LastName, string Email, string? PhoneNumber, string Department, string Designation, DateTime DateOfJoining, Guid? ManagerId, string Role, bool IsActive);
 public sealed record UpdateProfileRequest(string FirstName, string LastName, string? PhoneNumber, string Department, string Designation);
 

@@ -35,13 +35,15 @@ public sealed class UsersController(IPortalService portal, UserManager<Applicati
     }
     [Authorize(Roles = "HRAdmin,SuperAdmin"), HttpGet("managers")] public async Task<ActionResult<ApiResponse<IReadOnlyList<UserDto>>>> Managers(CancellationToken ct) => OkResponse(await portal.GetManagersAsync(ct));
     [Authorize(Roles = "HRAdmin,SuperAdmin"), HttpPost]
-    public async Task<ActionResult<ApiResponse<UserDto>>> Create([FromBody] UpsertUserRequest request, CancellationToken ct)
+    public async Task<ActionResult<ApiResponse<UserDto>>> Create([FromBody] CreateUserRequest request, CancellationToken ct)
     {
+        var existing = await users.FindByEmailAsync(request.Email);
+        if (existing is not null) throw new InvalidOperationException("A user with this email already exists.");
+        if (!await roles.RoleExistsAsync(request.Role)) throw new InvalidOperationException("Role does not exist.");
         var employeeId = string.IsNullOrWhiteSpace(request.EmployeeId) ? await NextEmployeeId(ct) : request.EmployeeId;
         var user = new ApplicationUser { UserName = request.Email, Email = request.Email, EmailConfirmed = true, EmployeeId = employeeId, FirstName = request.FirstName, LastName = request.LastName, PhoneNumber = request.PhoneNumber, Department = request.Department, Designation = request.Designation, DateOfJoining = request.DateOfJoining, ManagerId = request.ManagerId, IsActive = request.IsActive };
-        var result = await users.CreateAsync(user, "Welcome@123!");
+        var result = await users.CreateAsync(user, request.Password);
         if (!result.Succeeded) throw new InvalidOperationException(string.Join(", ", result.Errors.Select(x => x.Description)));
-        if (!await roles.RoleExistsAsync(request.Role)) throw new InvalidOperationException("Role does not exist.");
         await users.AddToRoleAsync(user, request.Role);
         foreach (var type in await db.LeaveTypes.Where(x => x.IsActive).ToListAsync(ct))
             ((DbContext)db).Set<LeaveBalance>().Add(new LeaveBalance { UserId = user.Id, LeaveTypeId = type.Id, Year = DateTime.UtcNow.Year, TotalAllocated = type.MaxDaysPerYear });

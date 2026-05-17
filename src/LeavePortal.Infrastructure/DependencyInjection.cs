@@ -15,12 +15,17 @@ namespace LeavePortal.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config, bool enableHangfire = true)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config, bool enableHangfire = true, bool isDevelopment = false)
     {
         var connection = config.GetConnectionString("DefaultConnection") ?? "Host=localhost;Port=5432;Database=leaveportal;Username=postgres;Password=postgres";
         var provider = config["Database:Provider"];
-        var useSqlite = string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase)
+        var useSqlite = isDevelopment
+            || string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase)
             || connection.Contains("Data Source=", StringComparison.OrdinalIgnoreCase);
+        var useAzureBlob = !isDevelopment
+            || string.Equals(config["FileStorage:Provider"], "AzureBlob", StringComparison.OrdinalIgnoreCase);
+        var useSendGrid = !isDevelopment
+            || string.Equals(config["Email:Provider"], "SendGrid", StringComparison.OrdinalIgnoreCase);
 
         services.AddDbContext<ApplicationDbContext>(options =>
         {
@@ -30,7 +35,7 @@ public static class DependencyInjection
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
         services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
         {
-            options.Password.RequiredLength = 8;
+            options.Password.RequiredLength = 7;
             options.Password.RequireDigit = true;
             options.Password.RequireLowercase = true;
             options.Password.RequireUppercase = true;
@@ -41,8 +46,12 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<ITokenService, TokenService>();
-        services.AddScoped<IEmailService, SendGridEmailService>();
-        services.AddScoped<IBlobStorageService, AzureBlobStorageService>();
+        services.AddScoped<IEmailService>(_ => useSendGrid
+            ? new SendGridEmailService(config)
+            : new ConsoleEmailService());
+        services.AddScoped<IBlobStorageService>(_ => useAzureBlob
+            ? new AzureBlobStorageService(config)
+            : new LocalBlobStorageService());
         services.AddScoped<ILeaveCalculationService, LeaveCalculationService>();
         services.AddScoped<IPortalService, PortalService>();
         services.AddScoped<DatabaseSeeder>();

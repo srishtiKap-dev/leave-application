@@ -1,22 +1,40 @@
-name: Backend
+name: Deploy Backend to Azure
+
 on:
   push:
     branches: [main]
     paths: ['src/**', 'tests/**', '.github/workflows/backend.yml']
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  AZURE_WEBAPP_NAME: 'app-leaveportal-api-prod'
+
 jobs:
-  build-test-deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
-      - run: dotnet restore LeavePortal.slnx
-      - run: dotnet build LeavePortal.slnx --configuration Release --no-restore
-      - run: dotnet test LeavePortal.slnx --configuration Release --no-build --collect:"XPlat Code Coverage"
-      - run: dotnet publish src/LeavePortal.API/LeavePortal.API.csproj -c Release -o publish
-      - uses: azure/webapps-deploy@v3
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore src/LeavePortal.API/LeavePortal.API.csproj
+
+      - name: Build
+        run: dotnet build src/LeavePortal.API/LeavePortal.API.csproj --configuration Release --no-restore
+
+      - name: Run tests
+        run: dotnet test LeavePortal.slnx --configuration Release --verbosity normal
+
+      - name: Publish
+        run: dotnet publish src/LeavePortal.API/LeavePortal.API.csproj --configuration Release --output ./publish
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ secrets.AZURE_API_APP_NAME }}
-          publish-profile: ${{ secrets.AZURE_API_PUBLISH_PROFILE }}
-          package: publish
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./publish

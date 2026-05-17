@@ -20,6 +20,18 @@ const expenseStatus: Record<number, string> = {
 
 export function StatusBadge({ status, kind = 'leave' }: { status: string | number; kind?: 'leave' | 'expense' }) {
   const label = typeof status === 'number' ? (kind === 'expense' ? expenseStatus[status] : leaveStatus[status]) ?? String(status) : status;
-  const tone = label.includes('Approved') || label === 'Paid' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : label.includes('Reject') ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' : label.includes('Pending') || label === 'Submitted' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+  const tones: Record<string, string> = {
+    Pending: 'bg-amber-100 text-amber-700',
+    ApprovedByManager: 'bg-blue-100 text-blue-700',
+    ApprovedByHR: 'bg-emerald-100 text-emerald-700',
+    ApprovedByFinance: 'bg-emerald-100 text-emerald-700',
+    Rejected: 'bg-red-100 text-red-700',
+    Cancelled: 'bg-slate-100 text-slate-600',
+    Draft: 'bg-slate-100 text-slate-600',
+    Submitted: 'bg-indigo-100 text-indigo-700',
+    Paid: 'bg-emerald-100 text-emerald-700',
+    Withdrawn: 'bg-slate-100 text-slate-600'
+  };
+  const tone = tones[label] ?? 'bg-slate-100 text-slate-600';
   return <span className={`badge ${tone}`}>{label}</span>;
 }

@@ -36,7 +36,7 @@ On startup, the API applies migrations and seeds roles, leave types, holidays, s
 Seed logins:
 
 - `admin@company.com` / `Admin@123!`
-- `hr@company.com` / `Hr@12345!`
+- `hr@company.com` / `Hr@123!`
 - `manager1@company.com` / `Manager@123!`
 - `manager2@company.com` / `Manager@123!`
 - `emp001@company.com` through `emp005@company.com` / `Emp@123!`
@@ -61,34 +61,74 @@ dotnet test LeavePortal.slnx
 
 The backend builds on `net10.0`. Unit tests cover application leave calculation logic; integration tests smoke-test API startup and built-in OpenAPI.
 
-## Azure Deployment
+## Deployment
 
-Provision infrastructure:
+Azure CLI is installed in the current terminal, but provisioning requires an authenticated Azure account. Run `az login` before deploying. If Azure CLI is missing on another machine, install it first: https://learn.microsoft.com/en-us/cli/azure/install-azure-cli
+
+Live application URLs after deployment:
+
+- Frontend: `https://thankful-smoke-0f212b60f.7.azurestaticapps.net`
+- API: `https://app-leaveportal-api-prod.azurewebsites.net`
+- API Docs: `https://app-leaveportal-api-prod.azurewebsites.net/openapi/v1.json`
+
+Deploy to Azure:
 
 ```bash
-az deployment sub create --location centralindia --template-file infra/main.bicep --parameters postgresAdminPassword='<strong-password>'
+az group create --name rg-leaveportal-prod --location eastus
+az deployment group create \
+  --resource-group rg-leaveportal-prod \
+  --template-file infra/main.bicep \
+  --parameters appName=leaveportal environment=prod postgresAdminPassword='<strong-password>'
 ```
 
 Configure GitHub secrets:
 
-- `AZURE_API_APP_NAME`
-- `AZURE_API_PUBLISH_PROFILE`
+- `AZURE_WEBAPP_PUBLISH_PROFILE`
 - `AZURE_STATIC_WEB_APPS_API_TOKEN`
-- `VITE_API_URL`
+
+Push to the `main` branch after the secrets are configured. GitHub Actions deploys the backend and frontend automatically.
 
 Required App Service settings:
 
 - `ConnectionStrings__DefaultConnection`
-- `ConnectionStrings__Storage`
 - `JwtSettings__Secret`
 - `JwtSettings__Issuer`
 - `JwtSettings__Audience`
 - `JwtSettings__AccessTokenExpirationMinutes`
 - `JwtSettings__RefreshTokenExpirationDays`
-- `Cors__AllowedOrigins__0`
-- `Storage__ReceiptsContainer`
-- `SendGrid__ApiKey`
-- `SendGrid__FromEmail`
+- `AllowedOrigins__0`
+- `FileStorage__Provider`
+- `FileStorage__ConnectionString`
+- `FileStorage__ContainerName`
+- `Email__ApiKey`
 - `ApplicationInsights__ConnectionString`
+
+Example:
+
+```bash
+az webapp config appsettings set \
+  --resource-group rg-leaveportal-prod \
+  --name app-leaveportal-api-prod \
+  --settings \
+  ASPNETCORE_ENVIRONMENT=Production \
+  "ConnectionStrings__DefaultConnection=Host=psql-leaveportal-prod.postgres.database.azure.com;Database=leaveportaldb;Username=leaveportal_admin;Password=${DB_PASSWORD};SSL Mode=Require;" \
+  "JwtSettings__Secret=${JWT_SECRET}" \
+  "JwtSettings__Issuer=LeavePortal" \
+  "JwtSettings__Audience=LeavePortalUsers" \
+  "JwtSettings__AccessTokenExpirationMinutes=15" \
+  "JwtSettings__RefreshTokenExpirationDays=7" \
+  "FileStorage__Provider=AzureBlob" \
+  "FileStorage__ConnectionString=${STORAGE_CONNECTION_STRING}" \
+  "FileStorage__ContainerName=receipts" \
+  "ApplicationInsights__ConnectionString=${APPINSIGHTS_CONNECTION_STRING}" \
+  "AllowedOrigins__0=https://thankful-smoke-0f212b60f.7.azurestaticapps.net"
+```
+
+After deployment, verify:
+
+```bash
+curl https://app-leaveportal-api-prod.azurewebsites.net/health
+curl https://app-leaveportal-api-prod.azurewebsites.net/openapi/v1.json
+```
 
 Security defaults include 15-minute JWT access tokens, 7-day rotated refresh tokens, Identity password policy and lockout, role-based API authorization, private receipt storage with SAS read URLs, global exception handling, HTTPS, validation, and paginated list responses.

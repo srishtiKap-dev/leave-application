@@ -55,3 +55,25 @@ public sealed class UpsertUserRequestValidator : AbstractValidator<UpsertUserReq
         RuleFor(x => x.Role).Must(x => Roles.Contains(x)).WithMessage("Role must be Employee, Manager, HRAdmin, or SuperAdmin.");
     }
 }
+
+public sealed class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
+{
+    private static readonly string[] Roles = ["Employee", "Manager", "HRAdmin", "SuperAdmin"];
+
+    public CreateUserRequestValidator()
+    {
+        RuleFor(x => x.FirstName).NotEmpty().MaximumLength(80);
+        RuleFor(x => x.LastName).NotEmpty().MaximumLength(80);
+        RuleFor(x => x.Email).EmailAddress().NotEmpty();
+        RuleFor(x => x.Department).NotEmpty().MaximumLength(120);
+        RuleFor(x => x.Designation).NotEmpty().MaximumLength(120);
+        RuleFor(x => x.Role).Must(x => Roles.Contains(x)).WithMessage("Role must be Employee, Manager, HRAdmin, or SuperAdmin.");
+        RuleFor(x => x.Password)
+            .NotEmpty().WithMessage("Password is required.")
+            .MinimumLength(8).WithMessage("Password must be at least 8 characters.")
+            .Matches("[A-Z]").WithMessage("Password must contain at least one uppercase letter.")
+            .Matches("[a-z]").WithMessage("Password must contain at least one lowercase letter.")
+            .Matches("[0-9]").WithMessage("Password must contain at least one number.")
+            .Matches("[^a-zA-Z0-9]").WithMessage("Password must contain at least one special character.");
+    }
+}

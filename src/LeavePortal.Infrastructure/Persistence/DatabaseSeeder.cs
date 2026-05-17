@@ -9,7 +9,7 @@ public sealed class DatabaseSeeder(ApplicationDbContext db, UserManager<Applicat
 {
     public async Task SeedAsync(CancellationToken ct = default)
     {
-        if (db.Database.IsSqlite()) await db.Database.EnsureCreatedAsync(ct);
+        if (db.Database.IsSqlite() || db.Database.IsNpgsql()) await db.Database.EnsureCreatedAsync(ct);
         else await db.Database.MigrateAsync(ct);
         foreach (var role in Enum.GetNames<PortalRole>())
             if (!await roles.RoleExistsAsync(role)) await roles.CreateAsync(new IdentityRole<Guid>(role));
@@ -17,7 +17,7 @@ public sealed class DatabaseSeeder(ApplicationDbContext db, UserManager<Applicat
         var leaveTypes = await SeedLeaveTypesAsync(ct);
 
         var admin = await CreateUser("ADM001", "Super", "Admin", "admin@company.com", "IT", "System Administrator", null, "SuperAdmin", "Admin@123!");
-        var hr = await CreateUser("HR001", "HR", "Manager", "hr@company.com", "HR", "HR Manager", admin.Id, "HRAdmin", "Hr@12345!");
+        var hr = await CreateUser("HR001", "HR", "Manager", "hr@company.com", "HR", "HR Manager", admin.Id, "HRAdmin", "Hr@123!");
         var manager1 = await CreateUser("MGR001", "Arjun", "Sharma", "manager1@company.com", "Engineering", "Engineering Manager", admin.Id, "Manager", "Manager@123!");
         var manager2 = await CreateUser("MGR002", "Priya", "Nair", "manager2@company.com", "Finance", "Finance Manager", admin.Id, "Manager", "Manager@123!");
 

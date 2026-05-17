@@ -15,9 +15,10 @@ public sealed class AuthController(UserManager<ApplicationUser> users, SignInMan
     public async Task<ActionResult<ApiResponse<AuthResult>>> Login([FromBody] LoginRequest request, CancellationToken ct)
     {
         var user = await users.FindByEmailAsync(request.Email);
-        if (user is null || !user.IsActive) throw new UnauthorizedAccessException("Invalid credentials.");
+        if (user is null) throw new UnauthorizedAccessException("Invalid username or password.");
+        if (!user.IsActive) throw new UnauthorizedAccessException("Your account has been deactivated. Please contact HR.");
         var result = await signIn.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
-        if (!result.Succeeded) throw new UnauthorizedAccessException("Invalid credentials.");
+        if (!result.Succeeded) throw new UnauthorizedAccessException("Invalid username or password.");
         return OkResponse(await tokens.CreateTokenAsync(user, ct));
     }
 

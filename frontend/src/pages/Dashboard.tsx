@@ -1,12 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { ArrowRight, Calendar, CalendarPlus, Circle, ReceiptText } from 'lucide-react';
+import { ArrowRight, Calendar, CalendarPlus, ReceiptText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { dashboard, balances } from '../api/portal';
-import { StatusBadge } from '../components/ui/StatusBadge';
 
 export function Dashboard() {
-  const { data } = useQuery({ queryKey: ['dashboard'], queryFn: () => dashboard('employee') });
+  useQuery({ queryKey: ['dashboard'], queryFn: () => dashboard('employee') });
   const { data: balanceData } = useQuery({ queryKey: ['balances'], queryFn: balances });
   return <div className="mx-auto grid max-w-7xl gap-6">
     <div className="mb-2"><h1 className="text-2xl font-bold text-slate-900">Employee Dashboard</h1><p className="mt-1 text-sm text-slate-500">Track your leave balances, recent claims, and approvals.</p></div>
@@ -15,10 +14,6 @@ export function Dashboard() {
       <ActionCard to="/leaves/apply" icon={<CalendarPlus size={22} />} title="Apply for Leave" subtitle="Submit a new leave request" tone="indigo" />
       <ActionCard to="/expenses/new" icon={<ReceiptText size={22} />} title="New Expense Claim" subtitle="Submit a reimbursable expense" tone="emerald" />
     </div>
-    <section className="grid gap-4 lg:grid-cols-2">
-      <ActivityCard title="My Recent Leaves" to="/leaves">{data?.leaves.slice(0, 5).map((x) => <div className="flex items-center gap-3 border-b border-slate-100 py-3 last:border-0" key={x.id}><Circle className="fill-amber-400 text-amber-400" size={10} /><div className="min-w-0 flex-1"><p className="font-medium text-slate-900">{x.leaveTypeCode}</p><p className="text-sm text-slate-500">{x.startDate} to {x.endDate}</p></div><StatusBadge status={x.status} /></div>)}</ActivityCard>
-      <ActivityCard title="My Expense Claims" to="/expenses">{data?.expenses.slice(0, 5).map((x) => <div className="flex items-center gap-3 border-b border-slate-100 py-3 last:border-0" key={x.id}><Circle className="fill-indigo-400 text-indigo-400" size={10} /><div className="min-w-0 flex-1"><p className="font-medium text-slate-900">{x.title}</p><p className="text-sm text-slate-500">{x.currency} {x.totalAmount}</p></div><StatusBadge status={x.status} kind="expense" /></div>)}</ActivityCard>
-    </section>
   </div>;
 }
 
@@ -38,8 +33,4 @@ function BalanceCard({ code, remaining, total }: { code: string; remaining: numb
 function ActionCard({ to, icon, title, subtitle, tone }: { to: string; icon: React.ReactNode; title: string; subtitle: string; tone: 'indigo' | 'emerald' }) {
   const iconClass = tone === 'emerald' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600';
   return <Link to={to} className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:border-indigo-200 hover:shadow-md"><div className={`rounded-lg p-3 ${iconClass}`}>{icon}</div><div className="flex-1"><p className="font-semibold text-slate-900">{title}</p><p className="text-sm text-slate-500">{subtitle}</p></div><ArrowRight className="text-slate-400" size={20} /></Link>;
-}
-
-function ActivityCard({ title, to, children }: { title: string; to: string; children: React.ReactNode }) {
-  return <div className="card"><div className="flex items-center justify-between"><h2 className="font-semibold text-slate-900">{title}</h2><Link className="text-sm font-medium text-primary" to={to}>View All</Link></div><div className="mt-3">{children}</div></div>;
 }

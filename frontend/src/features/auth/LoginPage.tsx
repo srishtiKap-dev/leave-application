@@ -3,20 +3,39 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { useNavigate, Link } from 'react-router-dom';
-import { Building2, CheckCircle2, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
+import { Building2, CheckCircle2, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { login } from '../../api/portal';
 import { dashboardFor, useAuth } from '../../stores/auth';
 import { Button } from '../../components/ui/Button';
 
-const schema = z.object({ email: z.string().email(), password: z.string().min(8) });
+const schema = z.object({
+  email: z.string().trim().min(1, 'Please enter username').email('Please enter a valid email address'),
+  password: z.string().min(1, 'Please enter password')
+});
 type Form = z.infer<typeof schema>;
 
 export function LoginPage() {
   const navigate = useNavigate();
   const setAuth = useAuth((s) => s.setAuth);
   const [showPassword, setShowPassword] = useState(false);
-  const { register, handleSubmit, formState: { isSubmitting } } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: { email: 'admin@company.com', password: 'Admin@123!' } });
+  const [formError, setFormError] = useState('');
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: { email: '', password: '' } });
+  const onSubmit = handleSubmit(async (values) => {
+    setFormError('');
+    try {
+      const auth = await login(values.email, values.password);
+      setAuth(auth);
+      toast.success('Welcome back');
+      navigate(dashboardFor(auth.user));
+    } catch (error: any) {
+      const message = error?.response?.status === 401
+        ? 'Invalid username or password.'
+        : error?.response?.data?.errors?.[0] ?? error?.response?.data?.message ?? 'Unable to sign in. Please try again.';
+      setFormError(message);
+      toast.error(message);
+    }
+  });
   return <section className="grid min-h-screen w-full bg-white lg:grid-cols-[3fr_2fr]">
     <div className="hidden bg-gradient-to-br from-indigo-600 to-indigo-800 px-16 py-12 text-white lg:flex lg:flex-col lg:justify-between">
       <div>
@@ -34,15 +53,18 @@ export function LoginPage() {
         <div className="mb-8 flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white"><Building2 size={22} /></div>
         <h2 className="text-2xl font-bold text-slate-900">Welcome back</h2>
         <p className="mt-1 text-sm text-slate-500">Sign in to your account</p>
-        <form className="mt-8 grid gap-5" onSubmit={handleSubmit(async (values) => { const auth = await login(values.email, values.password); setAuth(auth); toast.success('Welcome back'); navigate(dashboardFor(auth.user)); })}>
+        <form className="mt-8 grid gap-5" onSubmit={onSubmit} noValidate>
           <label className="grid gap-1 text-sm">
             <span className="font-medium text-slate-700">Email address</span>
-            <div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input className="input pl-10" placeholder="you@company.com" {...register('email')} /></div>
+            <input className={`input ${errors.email ? 'input-error' : ''}`} placeholder="you@company.com" aria-invalid={Boolean(errors.email)} {...register('email')} />
+            {errors.email && <span className="text-xs font-medium text-red-600">{errors.email.message}</span>}
           </label>
           <label className="grid gap-1 text-sm">
             <span className="font-medium text-slate-700">Password</span>
-            <div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input className="input pl-10 pr-10" type={showPassword ? 'text' : 'password'} placeholder="Enter your password" {...register('password')} /><button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" onClick={() => setShowPassword((value) => !value)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>
+            <div className="relative"><input className={`input pr-10 ${errors.password ? 'input-error' : ''}`} type={showPassword ? 'text' : 'password'} placeholder="Enter your password" aria-invalid={Boolean(errors.password)} {...register('password')} /><button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>
+            {errors.password && <span className="text-xs font-medium text-red-600">{errors.password.message}</span>}
           </label>
+          {formError && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{formError}</div>}
           <Link className="justify-self-end text-sm font-medium text-primary hover:text-primary-dark" to="/forgot-password">Forgot password?</Link>
           <Button className="w-full" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="animate-spin" size={18} /> : 'Sign In'}</Button>
         </form>

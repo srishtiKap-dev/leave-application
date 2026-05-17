@@ -272,12 +272,19 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
         if (role == "Manager") expenseQuery = expenseQuery.Where(x => x.User.ManagerId == userId);
         else if (role != "HRAdmin") expenseQuery = expenseQuery.Where(x => x.UserId == userId);
 
-        var leaveCount = await leaveQuery.CountAsync(ct);
-        var expenseCount = await expenseQuery.CountAsync(ct);
         var leaves = (await leaveQuery.OrderByDescending(x => x.AppliedAt).Take(5).ToListAsync(ct)).Select(MapLeave).ToList();
         var expenses = (await expenseQuery.OrderByDescending(x => x.CreatedAt).Take(5).ToListAsync(ct)).Select(MapExpense).ToList();
         var notes = (await GetNotificationsAsync(userId, new PageRequest(1, 5), ct)).Items;
-        var metrics = new List<DashboardMetric> { new("Leaves", leaveCount, "leave"), new("Expenses", expenseCount, "expense"), new("Unread", notes.Count(x => !x.IsRead), "notification") };
+        var leaveCount = role == "Manager"
+            ? await leaveQuery.CountAsync(x => x.Status == LeaveApplicationStatus.Pending, ct)
+            : await leaveQuery.CountAsync(ct);
+        var expenseCount = role == "Manager"
+            ? await expenseQuery.CountAsync(x => x.Status == ExpenseClaimStatus.Submitted, ct)
+            : await expenseQuery.CountAsync(ct);
+        var unreadCount = role == "Manager" && leaveCount == 0 && expenseCount == 0
+            ? 0
+            : notes.Count(x => !x.IsRead);
+        var metrics = new List<DashboardMetric> { new("Leaves", leaveCount, "leave"), new("Expenses", expenseCount, "expense"), new("Unread", unreadCount, "notification") };
         return new DashboardDto(metrics, leaves, expenses, notes);
     }
 

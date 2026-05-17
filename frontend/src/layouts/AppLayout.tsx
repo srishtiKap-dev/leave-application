@@ -18,6 +18,13 @@ const links = [
   ['Notifications', '/notifications', Bell, ['Employee', 'Manager', 'HRAdmin', 'SuperAdmin']]
 ] as const;
 
+const pageTitles: Record<string, string> = {
+  '/profile': 'My Profile',
+  '/notifications': 'Notifications',
+  '/leaves/apply': 'Apply for Leave',
+  '/expenses/new': 'New Expense Claim'
+};
+
 export function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -28,7 +35,7 @@ export function AppLayout() {
   const [userOpen, setUserOpen] = useState(false);
   const userRoles = user?.roles ?? [];
   const visibleLinks = links.filter(([, , , roles]) => roles.some((role) => userRoles.includes(role as Role)));
-  const title = useMemo(() => visibleLinks.find(([, href]) => location.pathname === href)?.[0] ?? 'Dashboard', [location.pathname, visibleLinks]);
+  const title = useMemo(() => visibleLinks.find(([, href]) => location.pathname === href)?.[0] ?? pageTitles[location.pathname] ?? 'Dashboard', [location.pathname, visibleLinks]);
   const initials = `${user?.firstName?.[0] ?? 'U'}${user?.lastName?.[0] ?? ''}`.toUpperCase();
   const fullName = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || 'User';
   const roleLabel = userRoles[0] ?? 'Employee';
@@ -44,7 +51,7 @@ export function AppLayout() {
             <button className="ml-auto hidden rounded-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-900 md:block" onClick={() => setCollapsed((value) => !value)} aria-label="Toggle sidebar">{collapsed ? <Menu size={18} /> : <X size={18} />}</button>
           </div>
           <div className="border-t border-slate-100" />
-          <nav className="grid flex-1 gap-1 py-4">
+          <nav className="flex flex-1 flex-col gap-1 py-4">
             {visibleLinks.map(([label, href, Icon]) => <NavLink key={href} to={href} title={collapsed ? label : undefined} onClick={() => setMobileOpen(false)} className={({ isActive }) => `mx-2 flex items-center gap-3 rounded-lg border-l-2 px-3 py-2.5 text-sm transition-all duration-200 ${isActive ? 'border-indigo-600 bg-indigo-50 font-medium text-indigo-700' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}><Icon className="shrink-0" size={18} />{!collapsed && <span>{label}</span>}</NavLink>)}
           </nav>
           <div className="border-t border-slate-100 p-3">
@@ -65,8 +72,8 @@ export function AppLayout() {
             {userOpen && <div className="absolute right-0 top-12 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
               <div className="px-4 py-3"><p className="text-sm font-semibold text-slate-900">{fullName}</p><p className="truncate text-xs text-slate-500">{user?.email}</p></div>
               <div className="border-t border-slate-100" />
-              <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50" onClick={() => navigate('/profile')}><UserIcon size={16} />My Profile</button>
-              <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"><Key size={16} />Change Password</button>
+              <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50" onClick={() => { setUserOpen(false); navigate('/profile'); }}><UserIcon size={16} />My Profile</button>
+              <button className="flex w-full cursor-not-allowed items-center gap-2 px-4 py-2 text-sm text-slate-400 opacity-60" disabled aria-disabled="true" title="Change password is not available"><Key size={16} />Change Password</button>
               <div className="border-t border-slate-100" />
               <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:bg-red-50 hover:text-red-600" onClick={signOut}><LogOut size={16} />Sign Out</button>
             </div>}

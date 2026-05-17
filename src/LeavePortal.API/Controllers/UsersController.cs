@@ -34,14 +34,15 @@ public sealed class UsersController(IPortalService portal, UserManager<Applicati
         return OkResponse(new PagedResult<UserDto>(items, request.Page, request.Take, total));
     }
     [Authorize(Roles = "HRAdmin,SuperAdmin"), HttpGet("managers")] public async Task<ActionResult<ApiResponse<IReadOnlyList<UserDto>>>> Managers(CancellationToken ct) => OkResponse(await portal.GetManagersAsync(ct));
+    [Authorize(Roles = "HRAdmin,SuperAdmin"), HttpGet("next-employee-id")] public async Task<ActionResult<ApiResponse<object>>> NextId(CancellationToken ct) => OkResponse<object>(new { employeeId = await NextEmployeeId(ct) });
     [Authorize(Roles = "HRAdmin,SuperAdmin"), HttpPost]
     public async Task<ActionResult<ApiResponse<UserDto>>> Create([FromBody] CreateUserRequest request, CancellationToken ct)
     {
         var existing = await users.FindByEmailAsync(request.Email);
         if (existing is not null) throw new InvalidOperationException("A user with this email already exists.");
         if (!await roles.RoleExistsAsync(request.Role)) throw new InvalidOperationException("Role does not exist.");
-        var employeeId = string.IsNullOrWhiteSpace(request.EmployeeId) ? await NextEmployeeId(ct) : request.EmployeeId;
-        var user = new ApplicationUser { UserName = request.Email, Email = request.Email, EmailConfirmed = true, EmployeeId = employeeId, FirstName = request.FirstName, LastName = request.LastName, PhoneNumber = request.PhoneNumber, Department = request.Department, Designation = request.Designation, DateOfJoining = request.DateOfJoining, ManagerId = request.ManagerId, IsActive = request.IsActive };
+        var employeeId = await NextEmployeeId(ct);
+        var user = new ApplicationUser { UserName = request.Email, Email = request.Email, EmailConfirmed = true, EmployeeId = employeeId, FirstName = request.FirstName, LastName = request.LastName, PhoneNumber = request.PhoneNumber, Department = request.Department, Designation = request.Designation, DateOfJoining = Utc(request.DateOfJoining), ManagerId = request.ManagerId, IsActive = request.IsActive };
         var result = await users.CreateAsync(user, request.Password);
         if (!result.Succeeded) throw new InvalidOperationException(string.Join(", ", result.Errors.Select(x => x.Description)));
         await users.AddToRoleAsync(user, request.Role);
@@ -55,7 +56,7 @@ public sealed class UsersController(IPortalService portal, UserManager<Applicati
     {
         var user = await users.FindByIdAsync(id.ToString()) ?? throw new InvalidOperationException("User not found.");
         user.FirstName = request.FirstName; user.LastName = request.LastName; user.Email = request.Email; user.UserName = request.Email; user.PhoneNumber = request.PhoneNumber;
-        user.Department = request.Department; user.Designation = request.Designation; user.DateOfJoining = request.DateOfJoining; user.ManagerId = request.ManagerId; user.IsActive = request.IsActive; user.UpdatedAt = DateTime.UtcNow;
+        user.Department = request.Department; user.Designation = request.Designation; user.DateOfJoining = Utc(request.DateOfJoining); user.ManagerId = request.ManagerId; user.IsActive = request.IsActive; user.UpdatedAt = DateTime.UtcNow;
         var update = await users.UpdateAsync(user);
         if (!update.Succeeded) throw new InvalidOperationException(string.Join(", ", update.Errors.Select(x => x.Description)));
         var currentRoles = await users.GetRolesAsync(user);
@@ -73,4 +74,11 @@ public sealed class UsersController(IPortalService portal, UserManager<Applicati
         do { id = $"EMP{count++:000}"; } while (await db.Users.AnyAsync(x => x.EmployeeId == id, ct));
         return id;
     }
+
+    private static DateTime Utc(DateTime value) => value.Kind switch
+    {
+        DateTimeKind.Utc => value,
+        DateTimeKind.Local => value.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+    };
 }

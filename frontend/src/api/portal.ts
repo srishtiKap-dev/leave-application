@@ -30,3 +30,4 @@ export const nextEmployeeId = () => unwrap<{ employeeId: string }>(api.get('/use
 export const createUser = (body: CreateUser) => unwrap<User>(api.post('/users', body));
 export const updateUser = (id: string, body: UpsertUser) => unwrap<User>(api.put(`/users/${id}`, body));
 export const deleteUser = (id: string) => unwrap<object>(api.delete(`/users/${id}`));
+export const activateUser = (id: string) => unwrap<User>(api.post(`/users/${id}/activate`));

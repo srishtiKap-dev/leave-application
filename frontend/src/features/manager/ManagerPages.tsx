@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type React from 'react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { approveExpense, approveLeave, dashboard, expenses, leaves, rejectExpense, rejectLeave } from '../../api/portal';
+import { approveLeave, dashboard, leaves, rejectLeave } from '../../api/portal';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 
@@ -31,33 +30,10 @@ function LeaveTypeBadge({ code }: { code: string }) {
   return <span className="badge bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">{code}</span>;
 }
 
-export function ManagerExpenses() {
-  const qc = useQueryClient();
-  const [search, setSearch] = useState('');
-  const debounced = useDebounced(search);
-  const { data } = useQuery({ queryKey: ['manager-expenses', debounced], queryFn: () => expenses('/expense-approvals/pending', debounced) });
-  const approve = useMutation({ mutationFn: (id: string) => approveExpense(id, 'Approved'), onSuccess: () => { toast.success('Approved'); qc.invalidateQueries({ queryKey: ['manager-expenses'] }); } });
-  const reject = useMutation({ mutationFn: (id: string) => rejectExpense(id, 'Rejected'), onSuccess: () => { toast.success('Rejected'); qc.invalidateQueries({ queryKey: ['manager-expenses'] }); } });
-  return <div className="card"><div className="flex justify-end"><input className="input max-w-full sm:max-w-xs" placeholder="Search expenses" value={search} onChange={(e) => setSearch(e.target.value)} /></div><div className="mt-4 grid gap-3">{data?.items.map((x) => <ExpenseApprovalRow key={x.id} employeeName={x.employeeName} title={x.title} amount={`${x.currency} ${x.totalAmount}`} status={<StatusBadge status={x.status} kind="expense" />} actions={canManagerActOnExpense(x.status) ? <><Button onClick={() => approve.mutate(x.id)}>Approve</Button><Button type="button" className="bg-slate-600 hover:bg-slate-700" onClick={() => reject.mutate(x.id)}>Reject</Button></> : <span className="text-sm text-slate-500">No actions available</span>} />)}</div></div>;
-}
-
-function ExpenseApprovalRow({ employeeName, title, amount, status, actions }: { employeeName: string; title: string; amount: string; status: React.ReactNode; actions: React.ReactNode }) {
-  return <div className="grid gap-3 rounded-md border border-slate-200 p-3 dark:border-slate-800 lg:grid-cols-[1.2fr_1.4fr_auto_auto] lg:items-center">
-    <div className="min-w-0"><p className="truncate font-medium text-slate-900">{employeeName}</p><p className="text-xs text-slate-500">Employee</p></div>
-    <div className="min-w-0"><p className="truncate text-sm text-slate-700">{title}</p><p className="text-xs text-slate-500">{amount}</p></div>
-    <div>{status}</div>
-    <div className="flex flex-wrap gap-2 lg:justify-end">{actions}</div>
-  </div>;
-}
-
 function formatDateRange(startDate: string, endDate: string) {
   return startDate === endDate ? startDate : `${startDate} to ${endDate}`;
 }
 
 function canManagerActOnLeave(status: string | number) {
   return status === 'Pending' || status === 1;
-}
-
-function canManagerActOnExpense(status: string | number) {
-  return status === 'Submitted' || status === 1;
 }

@@ -22,7 +22,7 @@ public sealed class ExpenseClaimsController(IPortalService portal, IBlobStorageS
     [HttpPost("{id:guid}/items/{itemId:guid}/receipt")] public async Task<ActionResult<ApiResponse<object>>> Receipt(Guid id, Guid itemId, [FromForm] IFormFile file, CancellationToken ct) => OkResponse<object>(new { id, itemId, url = await blobs.UploadAsync(file.OpenReadStream(), file.FileName, file.ContentType, ct) });
 }
 
-[Authorize(Roles = "Manager,SuperAdmin")]
+[Authorize(Roles = "HRAdmin,SuperAdmin")]
 [Route("api/v{version:apiVersion}/expense-approvals")]
 public sealed class ExpenseApprovalsController(IPortalService portal) : BaseApiController
 {

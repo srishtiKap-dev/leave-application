@@ -120,15 +120,14 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
 
     public async Task<LeaveApplicationDto> ApproveLeaveByManagerAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct)
     {
-        await MovePendingToUsed(id, ct);
         return await ChangeLeave(id, actorId, LeaveApplicationStatus.Pending, LeaveApplicationStatus.ApprovedByManager, LeaveApprovalAction.ApprovedByManager, remarks, false, ct);
     }
 
     public async Task<LeaveApplicationDto> ApproveLeaveByHrAsync(Guid id, Guid actorId, string? remarks, CancellationToken ct)
     {
         var leave = await db.LeaveApplications.FirstAsync(x => x.Id == id, ct);
-        if (leave.Status is not (LeaveApplicationStatus.Pending or LeaveApplicationStatus.ApprovedByManager)) throw new InvalidOperationException("Leave must be Pending or ApprovedByManager.");
-        if (leave.Status == LeaveApplicationStatus.Pending) await MovePendingToUsed(id, ct);
+        if (leave.Status != LeaveApplicationStatus.ApprovedByManager) throw new InvalidOperationException("Manager approval is required before HR can approve leave.");
+        await MovePendingToUsed(id, ct);
         return await ChangeLeave(id, actorId, leave.Status, LeaveApplicationStatus.ApprovedByHR, LeaveApprovalAction.ApprovedByHR, remarks, true, ct);
     }
 
@@ -136,11 +135,9 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
     {
         var leave = await db.LeaveApplications.FirstAsync(x => x.Id == id, ct);
         var required = hr ? leave.Status : LeaveApplicationStatus.Pending;
-        if (hr && required is not (LeaveApplicationStatus.Pending or LeaveApplicationStatus.ApprovedByManager)) throw new InvalidOperationException("Leave must be Pending or ApprovedByManager.");
+        if (hr && required != LeaveApplicationStatus.ApprovedByManager) throw new InvalidOperationException("Manager approval is required before HR can reject leave.");
         var action = hr ? LeaveApprovalAction.RejectedByHR : LeaveApprovalAction.RejectedByManager;
-        if (hr && required == LeaveApplicationStatus.Pending) await RestorePending(id, ct);
-        else if (hr) await RestoreUsed(id, ct);
-        else await RestorePending(id, ct);
+        await RestorePending(id, ct);
         var dto = await ChangeLeave(id, actorId, required, LeaveApplicationStatus.Rejected, action, remarks, hr, ct);
         return dto;
     }
@@ -153,8 +150,8 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
         leave.Status = previousStatus == LeaveApplicationStatus.Pending ? LeaveApplicationStatus.Withdrawn : LeaveApplicationStatus.Cancelled;
         leave.CancelReason = reason; leave.CancelledAt = DateTime.UtcNow;
         await AddEntityAsync(new LeaveApprovalHistory { LeaveApplicationId = id, ActionBy = actorId, Action = leave.Status == LeaveApplicationStatus.Withdrawn ? LeaveApprovalAction.Withdrawn : LeaveApprovalAction.Cancelled, Remarks = reason }, ct);
-        if (previousStatus == LeaveApplicationStatus.Pending) await RestorePending(id, ct);
-        if (previousStatus is LeaveApplicationStatus.ApprovedByManager or LeaveApplicationStatus.ApprovedByHR) await RestoreUsed(id, ct);
+        if (previousStatus is LeaveApplicationStatus.Pending or LeaveApplicationStatus.ApprovedByManager) await RestorePending(id, ct);
+        if (previousStatus == LeaveApplicationStatus.ApprovedByHR) await RestoreUsed(id, ct);
         await db.SaveChangesAsync(ct);
         return await GetLeaveDto(id, ct);
     }

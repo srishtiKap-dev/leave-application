@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { AlertCircle, Eye, EyeOff, X } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { approveFinanceExpense, approveHrLeave, createUser, dashboard, deleteUser, expenses, leaves, managers, markExpensePaid, nextEmployeeId, rejectFinanceExpense, rejectHrLeave, updateUser, users } from '../../api/portal';
+import { activateUser, approveFinanceExpense, approveHrLeave, createUser, dashboard, deleteUser, expenses, leaves, managers, markExpensePaid, nextEmployeeId, rejectFinanceExpense, rejectHrLeave, updateUser, users } from '../../api/portal';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import type { CreateUser, Role, UpsertUser, User } from '../../types';
@@ -82,9 +82,35 @@ export function HrUsers() {
     }
   });
   const remove = useMutation({ mutationFn: deleteUser, onSuccess: () => { toast.success('Employee deactivated'); qc.invalidateQueries({ queryKey: ['users'] }); } });
+  const activate = useMutation({ mutationFn: activateUser, onSuccess: () => { toast.success('Employee activated'); qc.invalidateQueries({ queryKey: ['users'] }); } });
   return <div className="grid gap-4">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><h1 className="text-xl font-bold">User Management</h1><div className="flex gap-2"><input className="rounded-md border p-2 text-sm dark:bg-slate-900" placeholder="Search employees" value={search} onChange={(e) => setSearch(e.target.value)} /><Button onClick={() => { setEditing(null); setOpen(true); }}>Create Employee</Button></div></div>
-    <Table title="" rows={data?.items.map((x) => [x.employeeId, `${x.firstName} ${x.lastName}`, x.email, x.department, x.designation, <div className="flex gap-2"><Button onClick={() => { setEditing(x); setOpen(true); }}>Edit</Button><Button className="bg-slate-600 hover:bg-slate-700" onClick={() => remove.mutate(x.id)}>Deactivate</Button></div>]) ?? []} />
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end"><input className="rounded-md border p-2 text-sm dark:bg-slate-900" placeholder="Search employees" value={search} onChange={(e) => setSearch(e.target.value)} /><Button onClick={() => { setEditing(null); setOpen(true); }}>Create Employee</Button></div>
+    <div className="card overflow-x-auto">
+      <table className="w-full min-w-[860px] text-sm">
+        <thead>
+          <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+            <th className="p-2 font-semibold">Employee ID</th>
+            <th className="p-2 font-semibold">Name</th>
+            <th className="p-2 font-semibold">Email</th>
+            <th className="p-2 font-semibold">Department</th>
+            <th className="p-2 font-semibold">Designation</th>
+            <th className="p-2 font-semibold">Status</th>
+            <th className="p-2 font-semibold">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data?.items.map((x) => <tr className={`border-t border-slate-200 dark:border-slate-800 ${x.isActive === false ? 'bg-red-50 text-slate-500 dark:bg-red-950/20' : ''}`} key={x.id}>
+            <td className="p-2">{x.employeeId}</td>
+            <td className="p-2 font-medium text-slate-900 dark:text-slate-100">{x.firstName} {x.lastName}</td>
+            <td className="p-2">{x.email}</td>
+            <td className="p-2">{x.department}</td>
+            <td className="p-2">{x.designation}</td>
+            <td className="p-2">{x.isActive === false ? <span className="badge bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-200">Inactive</span> : <span className="badge bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200">Active</span>}</td>
+            <td className="p-2"><div className="flex flex-wrap gap-2"><Button onClick={() => { setEditing(x); setOpen(true); }}>Edit</Button>{x.isActive === false ? <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => activate.mutate(x.id)}>Activate</Button> : <Button className="bg-slate-600 hover:bg-slate-700" onClick={() => remove.mutate(x.id)}>Deactivate</Button>}</div></td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
     {open && <UserDrawer user={editing} onClose={() => { setOpen(false); setEditing(null); }} onSave={(body) => save.mutate(body)} />}
   </div>;
 }
@@ -202,7 +228,7 @@ function formatDateRange(startDate: string, endDate: string) {
 }
 
 function canHrActOnLeave(status: string | number) {
-  return status === 'Pending' || status === 'ApprovedByManager' || status === 1 || status === 2;
+  return status === 'ApprovedByManager' || status === 2;
 }
 
 function canHrActOnExpense(status: string | number) {

@@ -10,7 +10,6 @@ const links = [
   ['My Expenses', '/expenses', CreditCard, ['Employee', 'Manager', 'HRAdmin', 'SuperAdmin']],
   ['Manager Dashboard', '/manager/dashboard', LayoutDashboard, ['Manager', 'SuperAdmin']],
   ['Leave Approvals', '/manager/leaves', CalendarDays, ['Manager', 'SuperAdmin']],
-  ['Expense Approvals', '/manager/expenses', CreditCard, ['Manager', 'SuperAdmin']],
   ['HR Dashboard', '/hr/dashboard', LayoutDashboard, ['HRAdmin', 'SuperAdmin']],
   ['HR Leaves', '/hr/leaves', CalendarDays, ['HRAdmin', 'SuperAdmin']],
   ['HR Expenses', '/hr/expenses', CreditCard, ['HRAdmin', 'SuperAdmin']],

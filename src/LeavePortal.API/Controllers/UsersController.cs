@@ -65,6 +65,16 @@ public sealed class UsersController(IPortalService portal, UserManager<Applicati
         return OkResponse(new UserDto(user.Id, user.EmployeeId, user.FirstName, user.LastName, user.Email!, user.PhoneNumber, user.Department, user.Designation, user.DateOfJoining, user.ManagerId, user.IsActive, user.ProfilePictureUrl, [request.Role]));
     }
     [Authorize(Roles = "HRAdmin,SuperAdmin"), HttpDelete("{id:guid}")] public async Task<ActionResult<ApiResponse<object>>> Delete(Guid id, CancellationToken ct) { await portal.DeactivateUserAsync(id, ct); return OkResponse<object>(new { }); }
+    [Authorize(Roles = "HRAdmin,SuperAdmin"), HttpPost("{id:guid}/activate")]
+    public async Task<ActionResult<ApiResponse<UserDto>>> Activate(Guid id, CancellationToken ct)
+    {
+        var user = await users.FindByIdAsync(id.ToString()) ?? throw new InvalidOperationException("User not found.");
+        user.IsActive = true;
+        user.UpdatedAt = DateTime.UtcNow;
+        var result = await users.UpdateAsync(user);
+        if (!result.Succeeded) throw new InvalidOperationException(string.Join(", ", result.Errors.Select(x => x.Description)));
+        return OkResponse(new UserDto(user.Id, user.EmployeeId, user.FirstName, user.LastName, user.Email!, user.PhoneNumber, user.Department, user.Designation, user.DateOfJoining, user.ManagerId, user.IsActive, user.ProfilePictureUrl, (await users.GetRolesAsync(user)).ToList()));
+    }
     [HttpGet("{id:guid}/leave-balances")] public async Task<ActionResult<ApiResponse<IReadOnlyList<LeaveBalanceDto>>>> Balances(Guid id, [FromQuery] int? year, CancellationToken ct) => OkResponse(await portal.GetBalancesAsync(id, year ?? DateTime.UtcNow.Year, ct));
 
     private async Task<string> NextEmployeeId(CancellationToken ct)

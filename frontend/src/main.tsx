@@ -12,7 +12,7 @@ import { LoginPage, SimpleAuthPage } from './features/auth/LoginPage';
 import { Dashboard } from './pages/Dashboard';
 import { ApplyLeavePage, LeaveCalendarPage, MyLeavesPage } from './features/leaves/LeavesPages';
 import { ExpenseDetailPage, ExpenseFormPage, ExpenseListPage } from './features/expenses/ExpensePages';
-import { ManagerDashboard, ManagerExpenses, ManagerLeaves } from './features/manager/ManagerPages';
+import { ManagerDashboard, ManagerLeaves } from './features/manager/ManagerPages';
 import { HrDashboard, HrExpenses, HrLeaves, HrUsers, Reports } from './features/hr/HrPages';
 import { ChangePasswordPage, NotificationsPage, ProfilePage } from './pages/OtherPages';
 
@@ -26,7 +26,7 @@ const router = createBrowserRouter([
     { path: '/expenses', element: <ExpenseListPage /> }, { path: '/expenses/new', element: <ExpenseFormPage /> }, { path: '/expenses/:id', element: <ExpenseDetailPage /> }, { path: '/expenses/:id/edit', element: <ExpenseFormPage /> },
     { path: '/profile', element: <ProfilePage /> }, { path: '/change-password', element: <ChangePasswordPage /> }, { path: '/notifications', element: <NotificationsPage /> },
     { element: <RoleRoute roles={['Manager', 'SuperAdmin']} />, children: [
-      { path: '/manager/dashboard', element: <ManagerDashboard /> }, { path: '/manager/leaves', element: <ManagerLeaves /> }, { path: '/manager/expenses', element: <ManagerExpenses /> }, { path: '/manager/team-calendar', element: <LeaveCalendarPage /> }
+      { path: '/manager/dashboard', element: <ManagerDashboard /> }, { path: '/manager/leaves', element: <ManagerLeaves /> }, { path: '/manager/team-calendar', element: <LeaveCalendarPage /> }
     ] },
     { element: <RoleRoute roles={['HRAdmin', 'SuperAdmin']} />, children: [
       { path: '/hr/dashboard', element: <HrDashboard /> }, { path: '/hr/leaves', element: <HrLeaves /> }, { path: '/hr/leave-balances', element: <HrUsers /> }, { path: '/hr/holidays', element: <LeaveCalendarPage /> }, { path: '/hr/expenses', element: <HrExpenses /> }, { path: '/hr/reports', element: <Reports /> }, { path: '/hr/users', element: <HrUsers /> }

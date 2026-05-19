@@ -2,6 +2,7 @@ import { api, unwrap } from './axios';
 import type { AuthResult, CreateUser, Dashboard, ExpenseClaim, LeaveApplication, LeaveBalance, LeaveType, Notification, PagedResult, UpsertUser, User } from '../types';
 
 export const login = (email: string, password: string) => unwrap<AuthResult>(api.post('/auth/login', { email, password }));
+export const changePassword = (currentPassword: string, newPassword: string) => unwrap<object>(api.post('/auth/change-password', { currentPassword, newPassword }));
 export const me = () => unwrap<User>(api.get('/users/me'));
 export const dashboard = (kind: 'employee' | 'manager' | 'hr') => unwrap<Dashboard>(api.get(`/dashboard/${kind}`));
 export const balances = () => unwrap<LeaveBalance[]>(api.get('/leave-balance'));

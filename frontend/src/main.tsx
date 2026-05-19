@@ -14,7 +14,7 @@ import { ApplyLeavePage, LeaveCalendarPage, MyLeavesPage } from './features/leav
 import { ExpenseDetailPage, ExpenseFormPage, ExpenseListPage } from './features/expenses/ExpensePages';
 import { ManagerDashboard, ManagerExpenses, ManagerLeaves } from './features/manager/ManagerPages';
 import { HrDashboard, HrExpenses, HrLeaves, HrUsers, Reports } from './features/hr/HrPages';
-import { NotificationsPage, ProfilePage } from './pages/OtherPages';
+import { ChangePasswordPage, NotificationsPage, ProfilePage } from './pages/OtherPages';
 
 const queryClient = new QueryClient();
 const router = createBrowserRouter([
@@ -24,7 +24,7 @@ const router = createBrowserRouter([
     { path: '/dashboard', element: <Dashboard /> },
     { path: '/leaves', element: <MyLeavesPage /> }, { path: '/leaves/apply', element: <ApplyLeavePage /> }, { path: '/leaves/calendar', element: <LeaveCalendarPage /> },
     { path: '/expenses', element: <ExpenseListPage /> }, { path: '/expenses/new', element: <ExpenseFormPage /> }, { path: '/expenses/:id', element: <ExpenseDetailPage /> }, { path: '/expenses/:id/edit', element: <ExpenseFormPage /> },
-    { path: '/profile', element: <ProfilePage /> }, { path: '/notifications', element: <NotificationsPage /> },
+    { path: '/profile', element: <ProfilePage /> }, { path: '/change-password', element: <ChangePasswordPage /> }, { path: '/notifications', element: <NotificationsPage /> },
     { element: <RoleRoute roles={['Manager', 'SuperAdmin']} />, children: [
       { path: '/manager/dashboard', element: <ManagerDashboard /> }, { path: '/manager/leaves', element: <ManagerLeaves /> }, { path: '/manager/expenses', element: <ManagerExpenses /> }, { path: '/manager/team-calendar', element: <LeaveCalendarPage /> }
     ] },

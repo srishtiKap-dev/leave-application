@@ -65,7 +65,10 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
     }
 
     public async Task<IReadOnlyList<LeaveBalanceDto>> GetBalancesAsync(Guid userId, int year, CancellationToken ct) =>
-        (await db.LeaveBalances.Include(x => x.LeaveType).Where(x => x.UserId == userId && x.Year == year).ToListAsync(ct)).Select(MapBalance).ToList();
+        (await db.LeaveBalances.Include(x => x.LeaveType).Where(x => x.UserId == userId && x.Year == year).ToListAsync(ct))
+        .OrderBy(x => LeaveTypeOrder(x.LeaveType.Code))
+        .Select(MapBalance)
+        .ToList();
 
     public async Task<LeaveApplicationDto> ApplyLeaveAsync(Guid userId, ApplyLeaveRequest request, CancellationToken ct)
     {
@@ -350,5 +353,7 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
     private static LeaveBalanceDto MapBalance(LeaveBalance x) => new(x.Id, x.UserId, x.LeaveTypeId, x.LeaveType.Code, x.Year, x.TotalAllocated, x.TotalUsed, x.TotalPending, x.CarryForward, x.Remaining);
     private static LeaveApplicationDto MapLeave(LeaveApplication x) => new(x.Id, x.ApplicationNumber, x.UserId, $"{x.User.FirstName} {x.User.LastName}", x.LeaveTypeId, x.LeaveType.Code, x.StartDate, x.EndDate, x.TotalDays, x.Reason, x.Status, x.IsHalfDay, x.HalfDayType, x.AttachmentUrl, x.AppliedAt, x.ManagerId, x.ManagerRemarks, x.HRRemarks);
     private static ExpenseClaimDto MapExpense(ExpenseClaim x) => new(x.Id, x.ClaimNumber, x.UserId, $"{x.User.FirstName} {x.User.LastName}", x.Title, x.Description, x.TotalAmount, x.Currency, x.Status, x.SubmittedAt, x.Items.Select(i => new ExpenseItemDto(i.Id, i.Category, i.Description, i.Amount, i.ExpenseDate, i.ReceiptUrl, i.ReceiptFileName, i.IsReimbursable)).ToList(), x.ManagerRemarks, x.FinanceRemarks);
+
+    private static int LeaveTypeOrder(string code) => code switch { "CL" => 0, "SL" => 1, "EL" => 2, _ => 99 };
     private static NotificationDto MapNotification(Notification x) => new(x.Id, x.Title, x.Message, x.Type, x.IsRead, x.RelatedEntityId, x.RelatedEntityType, x.CreatedAt);
 }

@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Building2, CheckCircle2, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { login } from '../../api/portal';
@@ -29,9 +29,10 @@ export function LoginPage() {
       toast.success('Welcome back');
       navigate(dashboardFor(auth.user));
     } catch (error: any) {
+      const apiMessage = error?.response?.data?.message;
       const message = error?.response?.status === 401
-        ? 'Invalid username or password.'
-        : error?.response?.data?.errors?.[0] ?? error?.response?.data?.message ?? 'Unable to sign in. Please try again.';
+        ? apiMessage || 'Invalid username or password.'
+        : error?.response?.data?.errors?.[0] ?? apiMessage ?? 'Unable to sign in. Please try again.';
       setFormError(message);
       toast.error(message);
     }
@@ -65,7 +66,7 @@ export function LoginPage() {
             {errors.password && <span className="text-xs font-medium text-red-600">{errors.password.message}</span>}
           </label>
           {formError && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{formError}</div>}
-          <Link className="justify-self-end text-sm font-medium text-primary hover:text-primary-dark" to="/forgot-password">Forgot password?</Link>
+          <button type="button" className="justify-self-end text-sm font-medium text-slate-400" disabled title="Forgot password is not available">Forgot password?</button>
           <Button className="w-full" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="animate-spin" size={18} /> : 'Sign In'}</Button>
         </form>
         <p className="mt-8 text-center text-sm text-slate-500">Having trouble? Contact your HR administrator</p>

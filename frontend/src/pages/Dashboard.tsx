@@ -7,9 +7,10 @@ import { dashboard, balances } from '../api/portal';
 export function Dashboard() {
   useQuery({ queryKey: ['dashboard'], queryFn: () => dashboard('employee') });
   const { data: balanceData } = useQuery({ queryKey: ['balances'], queryFn: balances });
-  return <div className="mx-auto grid max-w-7xl gap-6">
-    <div className="mb-2"><h1 className="text-2xl font-bold text-slate-900">Employee Dashboard</h1><p className="mt-1 text-sm text-slate-500">Track your leave balances, recent claims, and approvals.</p></div>
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">{balanceData?.map((b) => <BalanceCard key={b.id} code={b.leaveTypeCode} remaining={b.remaining} total={b.totalAllocated + b.carryForward} />)}</div>
+  const orderedBalances = [...(balanceData ?? [])].sort((a, b) => leaveTypeOrder(a.leaveTypeCode) - leaveTypeOrder(b.leaveTypeCode));
+  return <div className="mx-auto grid w-full max-w-7xl gap-5 sm:gap-6">
+    <div className="mb-1 sm:mb-2"><h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Employee Dashboard</h1><p className="mt-1 text-sm text-slate-500">Track your leave balances, recent claims, and approvals.</p></div>
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">{orderedBalances.map((b) => <BalanceCard key={b.id} code={b.leaveTypeCode} remaining={b.remaining} total={b.totalAllocated + b.carryForward} />)}</div>
     <div className="grid gap-4 md:grid-cols-2">
       <ActionCard to="/leaves/apply" icon={<CalendarPlus size={22} />} title="Apply for Leave" subtitle="Submit a new leave request" tone="indigo" />
       <ActionCard to="/expenses/new" icon={<ReceiptText size={22} />} title="New Expense Claim" subtitle="Submit a reimbursable expense" tone="emerald" />
@@ -33,4 +34,8 @@ function BalanceCard({ code, remaining, total }: { code: string; remaining: numb
 function ActionCard({ to, icon, title, subtitle, tone }: { to: string; icon: React.ReactNode; title: string; subtitle: string; tone: 'indigo' | 'emerald' }) {
   const iconClass = tone === 'emerald' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600';
   return <Link to={to} className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:border-indigo-200 hover:shadow-md"><div className={`rounded-lg p-3 ${iconClass}`}>{icon}</div><div className="flex-1"><p className="font-semibold text-slate-900">{title}</p><p className="text-sm text-slate-500">{subtitle}</p></div><ArrowRight className="text-slate-400" size={20} /></Link>;
+}
+
+function leaveTypeOrder(code: string) {
+  return code === 'CL' ? 0 : code === 'SL' ? 1 : code === 'EL' ? 2 : 99;
 }

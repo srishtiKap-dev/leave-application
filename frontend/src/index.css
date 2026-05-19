@@ -2,13 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-body { @apply bg-slate-50 font-sans text-slate-700 antialiased dark:bg-slate-950 dark:text-slate-100; }
+html { @apply overflow-x-hidden; }
+body { @apply min-w-0 overflow-x-hidden bg-slate-50 font-sans text-slate-700 antialiased dark:bg-slate-950 dark:text-slate-100; }
 button, a, input, select, textarea { @apply transition-all duration-200; }
 button, input, select, textarea { @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-slate-950; }
 .badge { @apply rounded-full px-3 py-1 text-xs font-medium; }
-.card { @apply rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900; }
+.card { @apply rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6; }
 .input { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:ring-primary dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100; }
 .input-error { @apply border-red-400 focus:border-red-400 focus:ring-red-400; }
 .table-shell { @apply overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900; }
 .table-head { @apply bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:bg-slate-900; }
-.table-cell { @apply px-6 py-4 text-sm text-slate-700 dark:text-slate-200; }
+.table-cell { @apply px-3 py-3 text-sm text-slate-700 dark:text-slate-200 sm:px-6 sm:py-4; }

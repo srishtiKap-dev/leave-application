@@ -46,7 +46,16 @@ export function HrExpenses() {
   const approve = useMutation({ mutationFn: (id: string) => approveFinanceExpense(id, 'Approved for payment'), onSuccess: () => { toast.success('Approved'); qc.invalidateQueries({ queryKey: ['hr-expenses'] }); } });
   const reject = useMutation({ mutationFn: (id: string) => rejectFinanceExpense(id, 'Rejected by finance'), onSuccess: () => { toast.success('Rejected'); qc.invalidateQueries({ queryKey: ['hr-expenses'] }); } });
   const paid = useMutation({ mutationFn: markExpensePaid, onSuccess: () => { toast.success('Marked paid'); qc.invalidateQueries({ queryKey: ['hr-expenses'] }); } });
-  return <Table title="" search={search} onSearch={setSearch} rows={data?.items.map((x) => [x.employeeName, x.title, money.format(x.totalAmount), <StatusBadge status={x.status} kind="expense" />, <ExpenseActions status={x.status} onApprove={() => approve.mutate(x.id)} onReject={() => reject.mutate(x.id)} onPaid={() => paid.mutate(x.id)} />]) ?? []} />;
+  return <div className="card"><div className="flex justify-end"><input className="input max-w-full sm:max-w-xs" placeholder="Search expenses" value={search} onChange={(e) => setSearch(e.target.value)} /></div><div className="mt-4 grid gap-3">{data?.items.map((x) => <ExpenseApprovalRow key={x.id} employeeName={x.employeeName} title={x.title} amount={money.format(x.totalAmount)} status={<StatusBadge status={x.status} kind="expense" />} actions={<ExpenseActions status={x.status} onApprove={() => approve.mutate(x.id)} onReject={() => reject.mutate(x.id)} onPaid={() => paid.mutate(x.id)} />} />)}</div></div>;
+}
+
+function ExpenseApprovalRow({ employeeName, title, amount, status, actions }: { employeeName: string; title: string; amount: string; status: React.ReactNode; actions: React.ReactNode }) {
+  return <div className="grid gap-3 rounded-md border border-slate-200 p-3 dark:border-slate-800 lg:grid-cols-[1.2fr_1.4fr_auto_auto] lg:items-center">
+    <div className="min-w-0"><p className="truncate font-medium text-slate-900">{employeeName}</p><p className="text-xs text-slate-500">Employee</p></div>
+    <div className="min-w-0"><p className="truncate text-sm text-slate-700">{title}</p><p className="text-xs text-slate-500">{amount}</p></div>
+    <div>{status}</div>
+    <div className="flex flex-wrap gap-2 lg:justify-end">{actions}</div>
+  </div>;
 }
 
 function ExpenseActions({ status, onApprove, onReject, onPaid }: { status: string | number; onApprove: () => void; onReject: () => void; onPaid: () => void }) {
@@ -185,7 +194,7 @@ function isStrongPassword(password: string) {
 }
 
 function Table({ title, rows, search, onSearch }: { title: string; rows: React.ReactNode[][]; search?: string; onSearch?: (value: string) => void }) {
-  return <div className="card overflow-x-auto">{(title || onSearch) && <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">{title && <h1 className="text-xl font-bold">{title}</h1>}{onSearch && <input className="rounded-md border p-2 text-sm dark:bg-slate-900 sm:ml-auto" placeholder={title ? `Search ${title.toLowerCase()}` : 'Search'} value={search} onChange={(e) => onSearch(e.target.value)} />}</div>}<table className="w-full text-sm"><tbody>{rows.map((r, i) => <tr className="border-t border-slate-200 dark:border-slate-800" key={i}>{r.map((c, j) => <td className="p-2" key={j}>{c}</td>)}</tr>)}</tbody></table></div>;
+  return <div className="card overflow-x-auto">{(title || onSearch) && <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">{title && <h1 className="text-xl font-bold">{title}</h1>}{onSearch && <input className="input sm:ml-auto sm:max-w-xs" placeholder={title ? `Search ${title.toLowerCase()}` : 'Search'} value={search} onChange={(e) => onSearch(e.target.value)} />}</div>}<table className="w-full min-w-[720px] text-sm"><tbody>{rows.map((r, i) => <tr className="border-t border-slate-200 dark:border-slate-800" key={i}>{r.map((c, j) => <td className="p-2" key={j}>{c}</td>)}</tr>)}</tbody></table></div>;
 }
 
 function formatDateRange(startDate: string, endDate: string) {

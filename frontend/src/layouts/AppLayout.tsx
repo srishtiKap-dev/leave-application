@@ -20,6 +20,7 @@ const links = [
 
 const pageTitles: Record<string, string> = {
   '/profile': 'My Profile',
+  '/change-password': 'Change Password',
   '/notifications': 'Notifications',
   '/leaves/apply': 'Apply for Leave',
   '/expenses/new': 'New Expense Claim'
@@ -43,7 +44,7 @@ export function AppLayout() {
   return (
     <div className="min-h-screen bg-slate-50 md:flex">
       {mobileOpen && <button aria-label="Close sidebar overlay" className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={() => setMobileOpen(false)} />}
-      <aside className={`fixed inset-y-0 left-0 z-40 flex bg-white shadow-lg transition-all duration-300 md:static md:shadow-none ${collapsed ? 'w-[72px]' : 'w-[260px]'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-40 flex max-w-[86vw] bg-white shadow-lg transition-all duration-300 md:static md:max-w-none md:shadow-none ${collapsed ? 'w-[72px]' : 'w-[260px]'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="flex w-full flex-col border-r border-slate-200">
           <div className="flex h-16 items-center gap-3 px-4">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white"><Building2 size={20} /></div>
@@ -63,23 +64,23 @@ export function AppLayout() {
         </div>
       </aside>
       <main className="min-w-0 flex-1">
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 md:px-6">
-          <div className="flex items-center gap-3"><button className="rounded-lg p-2 text-slate-500 hover:bg-slate-50 md:hidden" onClick={() => setMobileOpen(true)} aria-label="Open sidebar"><Menu size={20} /></button><h1 className="text-xl font-semibold text-slate-900">{title}</h1></div>
-          <div className="relative flex items-center gap-3">
-            <div className="flex items-center">{searchOpen && <input aria-label="Global search" autoFocus placeholder="Search" className="input h-9 w-44 py-1.5 md:w-64" />}<button aria-label="Open search" className="rounded-lg p-2 text-slate-500 hover:bg-slate-50" onClick={() => setSearchOpen((value) => !value)}><Search size={20} /></button></div>
+        <header className="sticky top-0 z-20 flex min-h-16 items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-3 sm:px-4 md:px-6">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3"><button className="rounded-lg p-2 text-slate-500 hover:bg-slate-50 md:hidden" onClick={() => setMobileOpen(true)} aria-label="Open sidebar"><Menu size={20} /></button><h1 className="truncate text-lg font-semibold text-slate-900 sm:text-xl">{title}</h1></div>
+          <div className="relative flex shrink-0 items-center gap-1 sm:gap-3">
+            <div className="flex items-center">{searchOpen && <input aria-label="Global search" autoFocus placeholder="Search" className="input h-9 w-32 py-1.5 sm:w-44 md:w-64" />}<button aria-label="Open search" className="rounded-lg p-2 text-slate-500 hover:bg-slate-50" onClick={() => setSearchOpen((value) => !value)}><Search size={20} /></button></div>
             <button aria-label="Notifications" className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-50"><Bell size={20} /><span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-red-500" /></button>
             <button className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700" onClick={() => setUserOpen((value) => !value)}>{initials}</button>
             {userOpen && <div className="absolute right-0 top-12 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
               <div className="px-4 py-3"><p className="text-sm font-semibold text-slate-900">{fullName}</p><p className="truncate text-xs text-slate-500">{user?.email}</p></div>
               <div className="border-t border-slate-100" />
               <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50" onClick={() => { setUserOpen(false); navigate('/profile'); }}><UserIcon size={16} />My Profile</button>
-              <button className="flex w-full cursor-not-allowed items-center gap-2 px-4 py-2 text-sm text-slate-400 opacity-60" disabled aria-disabled="true" title="Change password is not available"><Key size={16} />Change Password</button>
+              <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50" onClick={() => { setUserOpen(false); navigate('/change-password'); }}><Key size={16} />Change Password</button>
               <div className="border-t border-slate-100" />
               <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:bg-red-50 hover:text-red-600" onClick={signOut}><LogOut size={16} />Sign Out</button>
             </div>}
           </div>
         </header>
-        <div className="animate-fadeIn px-4 py-6 md:px-6 md:py-8"><Outlet /></div>
+        <div className="animate-fadeIn px-3 py-4 sm:px-4 sm:py-6 md:px-6 md:py-8"><Outlet /></div>
       </main>
     </div>
   );

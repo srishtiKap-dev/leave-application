@@ -27,10 +27,10 @@ public static class DependencyInjection
         var useSendGrid = !isDevelopment
             || string.Equals(config["Email:Provider"], "SendGrid", StringComparison.OrdinalIgnoreCase);
 
-        services.AddDbContext<ApplicationDbContext>(options =>
+        services.AddDbContextPool<ApplicationDbContext>(options =>
         {
             if (useSqlite) options.UseSqlite(connection);
-            else options.UseNpgsql(connection);
+            else options.UseNpgsql(connection, npgsql => npgsql.EnableRetryOnFailure(3));
         });
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
         services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>

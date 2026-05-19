@@ -84,8 +84,18 @@ export function MyLeavesPage() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ['leaves'], queryFn: () => leaves() });
   const withdraw = useMutation({ mutationFn: withdrawLeave, onSuccess: () => { toast.success('Leave withdrawn'); qc.invalidateQueries({ queryKey: ['leaves'] }); } });
-  if (isLoading) return <div className="card">Loading leaves...</div>;
-  return <div className="card overflow-x-auto"><div className="mb-4 flex justify-end"><a className="text-primary" href="/leaves/apply">Apply Leave</a></div><table className="w-full min-w-[640px] text-sm"><thead><tr className="text-left text-slate-500"><th className="p-2">Number</th><th>Type</th><th>Dates</th><th>Days</th><th>Status</th><th>Action</th></tr></thead><tbody>{data?.items.map((x) => <tr className="border-t border-slate-200 dark:border-slate-800" key={x.id}><td className="p-2">{x.applicationNumber}</td><td><LeaveTypeBadge code={x.leaveTypeCode} /></td><td>{x.startDate} to {x.endDate}</td><td>{x.totalDays}</td><td><StatusBadge status={x.status} /></td><td>{isPending(x.status) && <Button className="h-8 bg-slate-600 px-3 hover:bg-slate-700" onClick={() => withdraw.mutate(x.id)}>Withdraw</Button>}</td></tr>)}</tbody></table></div>;
+  const rows = data?.items ?? [];
+  return <div className="card overflow-x-auto">
+    <div className="mb-4 flex justify-end"><a className="text-primary" href="/leaves/apply">Apply Leave</a></div>
+    <table className="w-full min-w-[640px] text-sm">
+      <thead><tr className="text-left text-slate-500"><th className="p-2">Number</th><th>Type</th><th>Dates</th><th>Days</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>
+        {isLoading && Array.from({ length: 4 }).map((_, index) => <tr className="border-t border-slate-200 dark:border-slate-800" key={index}><td className="p-2"><Skeleton /></td><td><Skeleton /></td><td><Skeleton /></td><td><Skeleton /></td><td><Skeleton /></td><td><Skeleton /></td></tr>)}
+        {!isLoading && rows.length === 0 && <tr className="border-t border-slate-200 dark:border-slate-800"><td className="p-6 text-center text-slate-500" colSpan={6}>No leave requests yet.</td></tr>}
+        {!isLoading && rows.map((x) => <tr className="border-t border-slate-200 dark:border-slate-800" key={x.id}><td className="p-2">{x.applicationNumber}</td><td><LeaveTypeBadge code={x.leaveTypeCode} /></td><td>{x.startDate} to {x.endDate}</td><td>{x.totalDays}</td><td><StatusBadge status={x.status} /></td><td>{isPending(x.status) && <Button className="h-8 bg-slate-600 px-3 hover:bg-slate-700" onClick={() => withdraw.mutate(x.id)}>Withdraw</Button>}</td></tr>)}
+      </tbody>
+    </table>
+  </div>;
 }
 
 export function LeaveCalendarPage() {
@@ -99,4 +109,8 @@ function isPending(status: string | number) {
 
 function LeaveTypeBadge({ code }: { code: string }) {
   return <span className="badge bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">{code}</span>;
+}
+
+function Skeleton() {
+  return <span className="block h-4 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />;
 }

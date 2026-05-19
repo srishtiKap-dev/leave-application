@@ -16,7 +16,16 @@ import { ManagerDashboard, ManagerLeaves } from './features/manager/ManagerPages
 import { HrDashboard, HrExpenses, HrLeaves, HrUsers, Reports } from './features/hr/HrPages';
 import { ChangePasswordPage, NotificationsPage, ProfilePage } from './pages/OtherPages';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1
+    }
+  }
+});
 const router = createBrowserRouter([
   { element: <AuthLayout />, children: [{ path: '/login', element: <LoginPage /> }, { path: '/forgot-password', element: <SimpleAuthPage title="Forgot Password" /> }, { path: '/reset-password', element: <SimpleAuthPage title="Reset Password" /> }] },
   { element: <ProtectedRoute />, children: [{ element: <AppLayout />, children: [

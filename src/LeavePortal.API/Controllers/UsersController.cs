@@ -17,7 +17,7 @@ public sealed class UsersController(IPortalService portal, UserManager<Applicati
     [Authorize(Roles = "HRAdmin,SuperAdmin"), HttpGet]
     public async Task<ActionResult<ApiResponse<PagedResult<UserDto>>>> List([FromQuery] string? department, [FromQuery] string? status, [FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        var query = users.Users.AsQueryable();
+        var query = users.Users.AsNoTracking().AsQueryable();
         if (!string.IsNullOrWhiteSpace(department)) query = query.Where(x => x.Department == department);
         if (bool.TryParse(status, out var active)) query = query.Where(x => x.IsActive == active);
         if (!string.IsNullOrWhiteSpace(search))
@@ -46,7 +46,7 @@ public sealed class UsersController(IPortalService portal, UserManager<Applicati
         var result = await users.CreateAsync(user, request.Password);
         if (!result.Succeeded) throw new InvalidOperationException(string.Join(", ", result.Errors.Select(x => x.Description)));
         await users.AddToRoleAsync(user, request.Role);
-        foreach (var type in await db.LeaveTypes.Where(x => x.IsActive).ToListAsync(ct))
+        foreach (var type in await db.LeaveTypes.AsNoTracking().Where(x => x.IsActive).ToListAsync(ct))
             ((DbContext)db).Set<LeaveBalance>().Add(new LeaveBalance { UserId = user.Id, LeaveTypeId = type.Id, Year = DateTime.UtcNow.Year, TotalAllocated = type.MaxDaysPerYear });
         await db.SaveChangesAsync(ct);
         return OkResponse(new UserDto(user.Id, user.EmployeeId, user.FirstName, user.LastName, user.Email!, user.PhoneNumber, user.Department, user.Designation, user.DateOfJoining, user.ManagerId, user.IsActive, user.ProfilePictureUrl, [request.Role]));
@@ -79,9 +79,9 @@ public sealed class UsersController(IPortalService portal, UserManager<Applicati
 
     private async Task<string> NextEmployeeId(CancellationToken ct)
     {
-        var count = await db.Users.CountAsync(x => x.EmployeeId.StartsWith("EMP"), ct) + 1;
+        var count = await db.Users.AsNoTracking().CountAsync(x => x.EmployeeId.StartsWith("EMP"), ct) + 1;
         string id;
-        do { id = $"EMP{count++:000}"; } while (await db.Users.AnyAsync(x => x.EmployeeId == id, ct));
+        do { id = $"EMP{count++:000}"; } while (await db.Users.AsNoTracking().AnyAsync(x => x.EmployeeId == id, ct));
         return id;
     }
 

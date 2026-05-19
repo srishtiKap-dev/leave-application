@@ -2,10 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { ArrowRight, Calendar, CalendarPlus, ReceiptText } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { dashboard, balances } from '../api/portal';
+import { balances } from '../api/portal';
 
 export function Dashboard() {
-  useQuery({ queryKey: ['dashboard'], queryFn: () => dashboard('employee') });
   const { data: balanceData } = useQuery({ queryKey: ['balances'], queryFn: balances });
   const orderedBalances = [...(balanceData ?? [])].sort((a, b) => leaveTypeOrder(a.leaveTypeCode) - leaveTypeOrder(b.leaveTypeCode));
   return <div className="mx-auto grid w-full max-w-7xl gap-5 sm:gap-6">

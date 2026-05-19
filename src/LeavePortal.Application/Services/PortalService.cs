@@ -11,7 +11,7 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
 {
     public async Task<PagedResult<UserDto>> GetUsersAsync(string? department, string? status, string? search, PageRequest page, CancellationToken ct)
     {
-        var query = db.Users;
+        var query = db.Users.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(department)) query = query.Where(x => x.Department == department);
         if (bool.TryParse(status, out var active)) query = query.Where(x => x.IsActive == active);
         if (!string.IsNullOrWhiteSpace(search))
@@ -24,8 +24,8 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
         return new PagedResult<UserDto>(users.Select(x => MapUser(x, [])).ToList(), page.Page, page.Take, total);
     }
 
-    public async Task<UserDto> GetUserAsync(Guid id, CancellationToken ct) => MapUser(await db.Users.FirstAsync(x => x.Id == id, ct), []);
-    public async Task<IReadOnlyList<UserDto>> GetManagersAsync(CancellationToken ct) => (await db.Users.Where(x => x.IsActive && x.Designation.Contains("Manager")).OrderBy(x => x.FirstName).ToListAsync(ct)).Select(x => MapUser(x, ["Manager"])).ToList();
+    public async Task<UserDto> GetUserAsync(Guid id, CancellationToken ct) => MapUser(await db.Users.AsNoTracking().FirstAsync(x => x.Id == id, ct), []);
+    public async Task<IReadOnlyList<UserDto>> GetManagersAsync(CancellationToken ct) => (await db.Users.AsNoTracking().Where(x => x.IsActive && x.Designation.Contains("Manager")).OrderBy(x => x.FirstName).ToListAsync(ct)).Select(x => MapUser(x, ["Manager"])).ToList();
 
     public Task<UserDto> UpsertUserAsync(Guid? id, UpsertUserRequest request, CancellationToken ct) =>
         throw new NotSupportedException("User creation is handled by the Identity-backed API controller to ensure password and role policies are enforced.");
@@ -52,7 +52,7 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
     }
 
     public async Task<IReadOnlyList<LeaveTypeDto>> GetLeaveTypesAsync(CancellationToken ct) =>
-        (await db.LeaveTypes.Where(x => x.IsActive).OrderBy(x => x.Code).ToListAsync(ct)).Select(MapLeaveType).ToList();
+        (await db.LeaveTypes.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Code).ToListAsync(ct)).Select(MapLeaveType).ToList();
 
     public async Task<LeaveTypeDto> UpsertLeaveTypeAsync(Guid? id, UpsertLeaveTypeRequest request, CancellationToken ct)
     {
@@ -65,7 +65,7 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
     }
 
     public async Task<IReadOnlyList<LeaveBalanceDto>> GetBalancesAsync(Guid userId, int year, CancellationToken ct) =>
-        (await db.LeaveBalances.Include(x => x.LeaveType).Where(x => x.UserId == userId && x.Year == year).ToListAsync(ct))
+        (await db.LeaveBalances.AsNoTracking().Include(x => x.LeaveType).Where(x => x.UserId == userId && x.Year == year).ToListAsync(ct))
         .OrderBy(x => LeaveTypeOrder(x.LeaveType.Code))
         .Select(MapBalance)
         .ToList();
@@ -97,7 +97,7 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
 
     public async Task<PagedResult<LeaveApplicationDto>> GetLeavesAsync(Guid? userId, Guid? managerId, string? status, int? year, Guid? typeId, string? search, PageRequest page, CancellationToken ct)
     {
-        var query = db.LeaveApplications.Include(x => x.User).Include(x => x.LeaveType).AsQueryable();
+        var query = db.LeaveApplications.AsNoTracking().Include(x => x.User).Include(x => x.LeaveType).AsQueryable();
         if (userId.HasValue) query = query.Where(x => x.UserId == userId);
         if (managerId.HasValue) query = query.Where(x => x.ManagerId == managerId);
         if (Enum.TryParse<LeaveApplicationStatus>(status, true, out var parsed)) query = query.Where(x => x.Status == parsed);
@@ -157,11 +157,11 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
     }
 
     public async Task<IReadOnlyList<LeaveHistoryDto>> GetLeaveHistoryAsync(Guid id, CancellationToken ct) =>
-        (await db.LeaveApprovalHistories.Include(x => x.Actor).Where(x => x.LeaveApplicationId == id).OrderBy(x => x.ActionAt).ToListAsync(ct))
+        (await db.LeaveApprovalHistories.AsNoTracking().Include(x => x.Actor).Where(x => x.LeaveApplicationId == id).OrderBy(x => x.ActionAt).ToListAsync(ct))
         .Select(x => new LeaveHistoryDto(x.Id, $"{x.Actor.FirstName} {x.Actor.LastName}", x.Action, x.Remarks, x.ActionAt)).ToList();
 
     public async Task<IReadOnlyList<PublicHolidayDto>> GetHolidaysAsync(int year, CancellationToken ct) =>
-        (await db.PublicHolidays.Where(x => x.Year == year).OrderBy(x => x.Date).ToListAsync(ct)).Select(x => new PublicHolidayDto(x.Id, x.Name, x.Date, x.Year, x.IsOptional)).ToList();
+        (await db.PublicHolidays.AsNoTracking().Where(x => x.Year == year).OrderBy(x => x.Date).ToListAsync(ct)).Select(x => new PublicHolidayDto(x.Id, x.Name, x.Date, x.Year, x.IsOptional)).ToList();
 
     public async Task<PublicHolidayDto> UpsertHolidayAsync(Guid? id, UpsertHolidayRequest request, CancellationToken ct)
     {
@@ -207,7 +207,7 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
 
     public async Task<PagedResult<ExpenseClaimDto>> GetExpensesAsync(Guid? userId, Guid? managerId, string? status, string? search, PageRequest page, CancellationToken ct)
     {
-        var query = db.ExpenseClaims.Include(x => x.User).Include(x => x.Items).AsQueryable();
+        var query = db.ExpenseClaims.AsNoTracking().Include(x => x.User).Include(x => x.Items).AsQueryable();
         if (userId.HasValue) query = query.Where(x => x.UserId == userId);
         if (managerId.HasValue) query = query.Where(x => x.User.ManagerId == managerId);
         if (Enum.TryParse<ExpenseClaimStatus>(status, true, out var parsed)) query = query.Where(x => x.Status == parsed);
@@ -245,7 +245,7 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
 
     public async Task<PagedResult<NotificationDto>> GetNotificationsAsync(Guid userId, PageRequest page, CancellationToken ct)
     {
-        var q = db.Notifications.Where(x => x.UserId == userId);
+        var q = db.Notifications.AsNoTracking().Where(x => x.UserId == userId);
         var total = await q.CountAsync(ct);
         var items = await q.OrderByDescending(x => x.CreatedAt).Skip(page.Skip).Take(page.Take).ToListAsync(ct);
         return new PagedResult<NotificationDto>(items.Select(MapNotification).ToList(), page.Page, page.Take, total);
@@ -256,7 +256,7 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
 
     public async Task<DashboardDto> DashboardAsync(Guid userId, string role, CancellationToken ct)
     {
-        var leaveQuery = db.LeaveApplications.Include(x => x.User).Include(x => x.LeaveType)
+        var leaveQuery = db.LeaveApplications.AsNoTracking().Include(x => x.User).Include(x => x.LeaveType)
             .Where(x => x.StartDate.Year == DateTime.UtcNow.Year
                 && x.Status != LeaveApplicationStatus.Draft
                 && x.Status != LeaveApplicationStatus.Rejected
@@ -265,7 +265,7 @@ public sealed class PortalService(IApplicationDbContext db, ILeaveCalculationSer
         if (role == "Manager") leaveQuery = leaveQuery.Where(x => x.ManagerId == userId);
         else if (role != "HRAdmin") leaveQuery = leaveQuery.Where(x => x.UserId == userId);
 
-        var expenseQuery = db.ExpenseClaims.Include(x => x.User).Include(x => x.Items)
+        var expenseQuery = db.ExpenseClaims.AsNoTracking().Include(x => x.User).Include(x => x.Items)
             .Where(x => x.Status != ExpenseClaimStatus.Draft
                 && x.Status != ExpenseClaimStatus.Rejected
                 && x.Status != ExpenseClaimStatus.Withdrawn);

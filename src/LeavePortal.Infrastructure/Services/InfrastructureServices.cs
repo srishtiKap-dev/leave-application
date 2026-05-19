@@ -10,6 +10,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using SendGrid;
 using SendGrid.Helpers.Mail;
@@ -23,7 +25,7 @@ public sealed class CurrentUserService(IHttpContextAccessor accessor) : ICurrent
     public bool IsInRole(string role) => accessor.HttpContext?.User.IsInRole(role) == true;
 }
 
-public sealed class TokenService(ApplicationDbContext db, UserManager<ApplicationUser> users, IConfiguration config) : ITokenService
+public sealed class TokenService(ApplicationDbContext db, UserManager<ApplicationUser> users, IConfiguration config, IServiceScopeFactory scopeFactory, ILogger<TokenService> logger) : ITokenService
 {
     public async Task<AuthResult> CreateTokenAsync(ApplicationUser user, CancellationToken ct = default)
     {
@@ -39,8 +41,7 @@ public sealed class TokenService(ApplicationDbContext db, UserManager<Applicatio
         claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
         var jwt = new JwtSecurityToken(config["JwtSettings:Issuer"], config["JwtSettings:Audience"], claims, expires: expires, signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
         var refresh = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
-        db.RefreshTokens.Add(new RefreshToken { UserId = user.Id, TokenHash = Hash(refresh), ExpiresAt = DateTime.UtcNow.AddDays(config.GetValue("JwtSettings:RefreshTokenExpirationDays", 7)) });
-        await db.SaveChangesAsync(ct);
+        PersistRefreshToken(user.Id, refresh);
         return new AuthResult(new JwtSecurityTokenHandler().WriteToken(jwt), refresh, expires, new UserDto(user.Id, user.EmployeeId, user.FirstName, user.LastName, user.Email ?? "", user.PhoneNumber, user.Department, user.Designation, user.DateOfJoining, user.ManagerId, user.IsActive, user.ProfilePictureUrl, roles.ToList()));
     }
 
@@ -62,6 +63,25 @@ public sealed class TokenService(ApplicationDbContext db, UserManager<Applicatio
     }
 
     private static string Hash(string input) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(input)));
+
+    private void PersistRefreshToken(Guid userId, string refreshToken)
+    {
+        var expiresAt = DateTime.UtcNow.AddDays(config.GetValue("JwtSettings:RefreshTokenExpirationDays", 7));
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var scope = scopeFactory.CreateScope();
+                var scopedDb = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                scopedDb.RefreshTokens.Add(new RefreshToken { UserId = userId, TokenHash = Hash(refreshToken), ExpiresAt = expiresAt });
+                await scopedDb.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Refresh token persistence failed for user {UserId}.", userId);
+            }
+        });
+    }
 }
 
 public sealed class SendGridEmailService(IConfiguration config) : IEmailService

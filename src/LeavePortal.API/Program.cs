@@ -21,7 +21,9 @@ using Serilog;
 var builder = WebApplication.CreateBuilder(args);
 var useSqlite = string.Equals(builder.Configuration["Database:Provider"], "Sqlite", StringComparison.OrdinalIgnoreCase)
     || (builder.Configuration.GetConnectionString("DefaultConnection")?.Contains("Data Source=", StringComparison.OrdinalIgnoreCase) ?? false);
-var enableHangfire = !builder.Environment.IsEnvironment("Testing") && !useSqlite;
+var enableHangfire = builder.Configuration.GetValue("Hangfire:Enabled", !builder.Environment.IsProduction())
+    && !builder.Environment.IsEnvironment("Testing")
+    && !useSqlite;
 
 builder.Host.UseSerilog((ctx, lc) => lc.ReadFrom.Configuration(ctx.Configuration).WriteTo.Console().WriteTo.ApplicationInsights(ctx.Configuration["ApplicationInsights:ConnectionString"], TelemetryConverter.Traces));
 builder.Services.AddInfrastructure(builder.Configuration, enableHangfire, builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing"));

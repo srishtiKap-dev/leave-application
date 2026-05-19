@@ -26,7 +26,7 @@ public sealed class ExpenseClaimsController(IPortalService portal, IBlobStorageS
 [Route("api/v{version:apiVersion}/expense-approvals")]
 public sealed class ExpenseApprovalsController(IPortalService portal) : BaseApiController
 {
-    [HttpGet("pending")] public async Task<ActionResult<ApiResponse<PagedResult<ExpenseClaimDto>>>> Pending([FromQuery] string? search, CancellationToken ct) => OkResponse(await portal.GetExpensesAsync(null, UserId, "Submitted", search, Page(1, 100), ct));
+    [HttpGet("pending")] public async Task<ActionResult<ApiResponse<PagedResult<ExpenseClaimDto>>>> Pending([FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default) => OkResponse(await portal.GetExpensesAsync(null, UserId, "Submitted", search, Page(page, pageSize), ct));
     [HttpPost("{id:guid}/approve")] public async Task<ActionResult<ApiResponse<ExpenseClaimDto>>> Approve(Guid id, [FromBody] ApprovalRequest request, CancellationToken ct) => OkResponse(await portal.ApproveExpenseByManagerAsync(id, UserId, request.Remarks, ct));
     [HttpPost("{id:guid}/reject")] public async Task<ActionResult<ApiResponse<ExpenseClaimDto>>> Reject(Guid id, [FromBody] ApprovalRequest request, CancellationToken ct) => OkResponse(await portal.RejectExpenseByManagerAsync(id, UserId, request.Remarks, ct));
 }
@@ -35,7 +35,7 @@ public sealed class ExpenseApprovalsController(IPortalService portal) : BaseApiC
 [Route("api/v{version:apiVersion}/finance")]
 public sealed class FinanceController(IPortalService portal) : BaseApiController
 {
-    [HttpGet("expense-claims")] public async Task<ActionResult<ApiResponse<PagedResult<ExpenseClaimDto>>>> Claims([FromQuery] string? search, CancellationToken ct) => OkResponse(await portal.GetExpensesAsync(null, null, null, search, Page(1, 200), ct));
+    [HttpGet("expense-claims")] public async Task<ActionResult<ApiResponse<PagedResult<ExpenseClaimDto>>>> Claims([FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default) => OkResponse(await portal.GetExpensesAsync(null, null, null, search, Page(page, pageSize), ct));
     [HttpPost("expense-claims/{id:guid}/approve")] public async Task<ActionResult<ApiResponse<ExpenseClaimDto>>> Approve(Guid id, [FromBody] ApprovalRequest request, CancellationToken ct) => OkResponse(await portal.ApproveExpenseByFinanceAsync(id, UserId, request.Remarks, ct));
     [HttpPost("expense-claims/{id:guid}/reject")] public async Task<ActionResult<ApiResponse<ExpenseClaimDto>>> Reject(Guid id, [FromBody] ApprovalRequest request, CancellationToken ct) => OkResponse(await portal.RejectExpenseByFinanceAsync(id, UserId, request.Remarks, ct));
     [HttpPost("expense-claims/{id:guid}/mark-paid")] public async Task<ActionResult<ApiResponse<ExpenseClaimDto>>> Paid(Guid id, CancellationToken ct) => OkResponse(await portal.MarkExpensePaidAsync(id, UserId, ct));

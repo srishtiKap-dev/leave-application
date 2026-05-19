@@ -7,7 +7,9 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { expenses, saveExpense, submitExpense, withdrawExpense } from '../../api/portal';
 import { Button } from '../../components/ui/Button';
+import { Pagination } from '../../components/ui/Pagination';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { useAuth } from '../../stores/auth';
 
 const money = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });
 
@@ -15,9 +17,13 @@ type ExpenseForm = { title: string; description: string; currency: string; amoun
 
 export function ExpenseListPage() {
   const qc = useQueryClient();
-  const { data } = useQuery({ queryKey: ['expenses'], queryFn: () => expenses() });
+  const userId = useAuth((state) => state.user?.id);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const { data, isLoading } = useQuery({ queryKey: ['expenses', userId, page, pageSize], queryFn: () => expenses('/expense-claims', { page, pageSize }) });
   const withdraw = useMutation({ mutationFn: withdrawExpense, onSuccess: () => { toast.success('Expense withdrawn'); qc.invalidateQueries({ queryKey: ['expenses'] }); } });
-  return <div className="card overflow-x-auto"><div className="mb-4 flex justify-end"><a className="text-primary" href="/expenses/new">Create new claim</a></div><table className="w-full min-w-[640px] text-sm"><thead><tr className="text-left text-slate-500"><th className="p-2">Number</th><th>Title</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody>{data?.items.map((x) => <tr className="border-t border-slate-200 dark:border-slate-800" key={x.id}><td className="p-2">{x.claimNumber}</td><td>{x.title}</td><td>{money.format(x.totalAmount)}</td><td><StatusBadge status={x.status} kind="expense" /></td><td>{isSubmitted(x.status) && <Button className="h-8 bg-slate-600 px-3 hover:bg-slate-700" onClick={() => withdraw.mutate(x.id)}>Withdraw</Button>}</td></tr>)}</tbody></table></div>;
+  const rows = data?.items ?? [];
+  return <div className="card overflow-x-auto"><div className="mb-4 flex justify-end"><a className="text-primary" href="/expenses/new">Create new claim</a></div><table className="w-full min-w-[640px] text-sm"><thead><tr className="text-left text-slate-500"><th className="p-2">Number</th><th>Title</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody>{isLoading && Array.from({ length: 4 }).map((_, index) => <tr className="border-t border-slate-200 dark:border-slate-800" key={index}><td className="p-2"><Skeleton /></td><td><Skeleton /></td><td><Skeleton /></td><td><Skeleton /></td><td><Skeleton /></td></tr>)}{!isLoading && rows.length === 0 && <tr className="border-t border-slate-200 dark:border-slate-800"><td className="p-6 text-center text-slate-500" colSpan={5}>No claims raised yet.</td></tr>}{!isLoading && rows.map((x) => <tr className="border-t border-slate-200 dark:border-slate-800" key={x.id}><td className="p-2">{x.claimNumber}</td><td>{x.title}</td><td>{money.format(x.totalAmount)}</td><td><StatusBadge status={x.status} kind="expense" /></td><td>{isSubmitted(x.status) && <Button className="h-8 bg-slate-600 px-3 hover:bg-slate-700" onClick={() => withdraw.mutate(x.id)}>Withdraw</Button>}</td></tr>)}</tbody></table><Pagination page={data?.page ?? page} pageSize={pageSize} totalPages={data?.totalPages ?? 1} totalCount={data?.totalCount ?? 0} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} /></div>;
 }
 
 export function ExpenseFormPage() {
@@ -70,4 +76,8 @@ export function ExpenseDetailPage() {
 
 function isSubmitted(status: string | number) {
   return status === 'Submitted' || status === 1;
+}
+
+function Skeleton() {
+  return <span className="block h-4 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />;
 }

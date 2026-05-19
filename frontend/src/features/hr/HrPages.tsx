@@ -6,6 +6,7 @@ import { AlertCircle, Eye, EyeOff, X } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { activateUser, approveFinanceExpense, approveHrLeave, createUser, dashboard, deleteUser, expenses, leaves, managers, markExpensePaid, nextEmployeeId, rejectFinanceExpense, rejectHrLeave, updateUser, users } from '../../api/portal';
 import { Button } from '../../components/ui/Button';
+import { Pagination } from '../../components/ui/Pagination';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import type { CreateUser, Role, UpsertUser, User } from '../../types';
 
@@ -27,11 +28,13 @@ export function HrDashboard() {
 export function HrLeaves() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const debounced = useDebounced(search);
-  const { data } = useQuery({ queryKey: ['hr-leaves', debounced], queryFn: () => leaves('/hr/leave-applications', debounced) });
+  const { data } = useQuery({ queryKey: ['hr-leaves', debounced, page, pageSize], queryFn: () => leaves('/hr/leave-applications', { search: debounced, page, pageSize }) });
   const approve = useMutation({ mutationFn: (id: string) => approveHrLeave(id, 'Approved by HR'), onSuccess: () => { toast.success('Approved'); qc.invalidateQueries({ queryKey: ['hr-leaves'] }); } });
   const reject = useMutation({ mutationFn: (id: string) => rejectHrLeave(id, 'Rejected by HR'), onSuccess: () => { toast.success('Rejected'); qc.invalidateQueries({ queryKey: ['hr-leaves'] }); } });
-  return <Table title="" search={search} onSearch={setSearch} rows={data?.items.map((x) => [x.employeeName, <LeaveTypeBadge code={x.leaveTypeCode} />, formatDateRange(x.startDate, x.endDate), <StatusBadge status={x.status} />, canHrActOnLeave(x.status) ? <div className="flex gap-2"><Button onClick={() => approve.mutate(x.id)}>Approve</Button><Button className="bg-slate-600 hover:bg-slate-700" onClick={() => reject.mutate(x.id)}>Reject</Button></div> : <span className="text-sm text-slate-500">No actions available</span>]) ?? []} />;
+  return <Table title="" search={search} onSearch={(value) => { setSearch(value); setPage(1); }} rows={data?.items.map((x) => [x.employeeName, <LeaveTypeBadge code={x.leaveTypeCode} />, formatDateRange(x.startDate, x.endDate), <StatusBadge status={x.status} />, canHrActOnLeave(x.status) ? <div className="flex gap-2"><Button onClick={() => approve.mutate(x.id)}>Approve</Button><Button className="bg-slate-600 hover:bg-slate-700" onClick={() => reject.mutate(x.id)}>Reject</Button></div> : <span className="text-sm text-slate-500">No actions available</span>]) ?? []} pagination={<Pagination page={data?.page ?? page} pageSize={pageSize} totalPages={data?.totalPages ?? 1} totalCount={data?.totalCount ?? 0} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} />} />;
 }
 
 function LeaveTypeBadge({ code }: { code: string }) {
@@ -41,18 +44,20 @@ function LeaveTypeBadge({ code }: { code: string }) {
 export function HrExpenses() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const debounced = useDebounced(search);
-  const { data } = useQuery({ queryKey: ['hr-expenses', debounced], queryFn: () => expenses('/finance/expense-claims', debounced) });
+  const { data } = useQuery({ queryKey: ['hr-expenses', debounced, page, pageSize], queryFn: () => expenses('/finance/expense-claims', { search: debounced, page, pageSize }) });
   const approve = useMutation({ mutationFn: (id: string) => approveFinanceExpense(id, 'Approved for payment'), onSuccess: () => { toast.success('Approved'); qc.invalidateQueries({ queryKey: ['hr-expenses'] }); } });
   const reject = useMutation({ mutationFn: (id: string) => rejectFinanceExpense(id, 'Rejected by finance'), onSuccess: () => { toast.success('Rejected'); qc.invalidateQueries({ queryKey: ['hr-expenses'] }); } });
   const paid = useMutation({ mutationFn: markExpensePaid, onSuccess: () => { toast.success('Marked paid'); qc.invalidateQueries({ queryKey: ['hr-expenses'] }); } });
-  return <div className="card"><div className="flex justify-end"><input className="input max-w-full sm:max-w-xs" placeholder="Search expenses" value={search} onChange={(e) => setSearch(e.target.value)} /></div><div className="mt-4 grid gap-3">{data?.items.map((x) => <ExpenseApprovalRow key={x.id} employeeName={x.employeeName} title={x.title} amount={money.format(x.totalAmount)} status={<StatusBadge status={x.status} kind="expense" />} actions={<ExpenseActions status={x.status} onApprove={() => approve.mutate(x.id)} onReject={() => reject.mutate(x.id)} onPaid={() => paid.mutate(x.id)} />} />)}</div></div>;
+  return <div className="card"><div className="flex justify-end"><input className="input max-w-full sm:max-w-xs" placeholder="Search expenses" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} /></div><div className="mt-4 grid gap-3">{data?.items.length === 0 && <div className="rounded-md border border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-slate-800">No claims raised yet.</div>}{data?.items.map((x) => <ExpenseApprovalRow key={x.id} employeeName={x.employeeName} title={x.title} amount={money.format(x.totalAmount)} status={<StatusBadge status={x.status} kind="expense" />} actions={<ExpenseActions status={x.status} onApprove={() => approve.mutate(x.id)} onReject={() => reject.mutate(x.id)} onPaid={() => paid.mutate(x.id)} />} />)}</div><Pagination page={data?.page ?? page} pageSize={pageSize} totalPages={data?.totalPages ?? 1} totalCount={data?.totalCount ?? 0} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} /></div>;
 }
 
 function ExpenseApprovalRow({ employeeName, title, amount, status, actions }: { employeeName: string; title: string; amount: string; status: React.ReactNode; actions: React.ReactNode }) {
   return <div className="grid gap-3 rounded-md border border-slate-200 p-3 dark:border-slate-800 lg:grid-cols-[1.2fr_1.4fr_auto_auto] lg:items-center">
-    <div className="min-w-0"><p className="truncate font-medium text-slate-900">{employeeName}</p><p className="text-xs text-slate-500">Employee</p></div>
-    <div className="min-w-0"><p className="truncate text-sm text-slate-700">{title}</p><p className="text-xs text-slate-500">{amount}</p></div>
+    <div className="min-w-0"><p className="truncate font-medium text-slate-900 dark:text-slate-100">{employeeName}</p><p className="text-xs text-slate-500 dark:text-slate-400">Employee</p></div>
+    <div className="min-w-0"><p className="truncate text-sm text-slate-700 dark:text-slate-200">{title}</p><p className="text-xs text-slate-500 dark:text-slate-400">{amount}</p></div>
     <div>{status}</div>
     <div className="flex flex-wrap gap-2 lg:justify-end">{actions}</div>
   </div>;
@@ -67,10 +72,12 @@ function ExpenseActions({ status, onApprove, onReject, onPaid }: { status: strin
 export function HrUsers() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [editing, setEditing] = useState<User | null>(null);
   const [open, setOpen] = useState(false);
   const debounced = useDebounced(search);
-  const { data } = useQuery({ queryKey: ['users', debounced], queryFn: () => users(debounced) });
+  const { data } = useQuery({ queryKey: ['users', debounced, page, pageSize], queryFn: () => users({ search: debounced, page, pageSize }) });
   const save = useMutation({
     mutationFn: (body: CreateUser | UpsertUser) => editing ? updateUser(editing.id, body) : createUser(body as CreateUser),
     onSuccess: (_user, body) => {
@@ -84,7 +91,7 @@ export function HrUsers() {
   const remove = useMutation({ mutationFn: deleteUser, onSuccess: () => { toast.success('Employee deactivated'); qc.invalidateQueries({ queryKey: ['users'] }); } });
   const activate = useMutation({ mutationFn: activateUser, onSuccess: () => { toast.success('Employee activated'); qc.invalidateQueries({ queryKey: ['users'] }); } });
   return <div className="grid gap-4">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end"><input className="rounded-md border p-2 text-sm dark:bg-slate-900" placeholder="Search employees" value={search} onChange={(e) => setSearch(e.target.value)} /><Button onClick={() => { setEditing(null); setOpen(true); }}>Create Employee</Button></div>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end"><input className="rounded-md border p-2 text-sm dark:bg-slate-900" placeholder="Search employees" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} /><Button onClick={() => { setEditing(null); setOpen(true); }}>Create Employee</Button></div>
     <div className="card overflow-x-auto">
       <table className="w-full min-w-[860px] text-sm">
         <thead>
@@ -106,10 +113,11 @@ export function HrUsers() {
             <td className="p-2">{x.department}</td>
             <td className="p-2">{x.designation}</td>
             <td className="p-2">{x.isActive === false ? <span className="badge bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-200">Inactive</span> : <span className="badge bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200">Active</span>}</td>
-            <td className="p-2"><div className="flex flex-wrap gap-2"><Button onClick={() => { setEditing(x); setOpen(true); }}>Edit</Button>{x.isActive === false ? <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => activate.mutate(x.id)}>Activate</Button> : <Button className="bg-slate-600 hover:bg-slate-700" onClick={() => remove.mutate(x.id)}>Deactivate</Button>}</div></td>
+            <td className="p-2"><div className="flex min-w-max flex-nowrap gap-2"><Button onClick={() => { setEditing(x); setOpen(true); }}>Edit</Button>{x.isActive === false ? <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => activate.mutate(x.id)}>Activate</Button> : <Button className="bg-slate-600 hover:bg-slate-700" onClick={() => remove.mutate(x.id)}>Deactivate</Button>}</div></td>
           </tr>)}
         </tbody>
       </table>
+      <Pagination page={data?.page ?? page} pageSize={pageSize} totalPages={data?.totalPages ?? 1} totalCount={data?.totalCount ?? 0} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} />
     </div>
     {open && <UserDrawer user={editing} onClose={() => { setOpen(false); setEditing(null); }} onSave={(body) => save.mutate(body)} />}
   </div>;
@@ -219,8 +227,8 @@ function isStrongPassword(password: string) {
   return password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password) && /[^a-zA-Z0-9]/.test(password);
 }
 
-function Table({ title, rows, search, onSearch }: { title: string; rows: React.ReactNode[][]; search?: string; onSearch?: (value: string) => void }) {
-  return <div className="card overflow-x-auto">{(title || onSearch) && <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">{title && <h1 className="text-xl font-bold">{title}</h1>}{onSearch && <input className="input sm:ml-auto sm:max-w-xs" placeholder={title ? `Search ${title.toLowerCase()}` : 'Search'} value={search} onChange={(e) => onSearch(e.target.value)} />}</div>}<table className="w-full min-w-[720px] text-sm"><tbody>{rows.map((r, i) => <tr className="border-t border-slate-200 dark:border-slate-800" key={i}>{r.map((c, j) => <td className="p-2" key={j}>{c}</td>)}</tr>)}</tbody></table></div>;
+function Table({ title, rows, search, onSearch, pagination }: { title: string; rows: React.ReactNode[][]; search?: string; onSearch?: (value: string) => void; pagination?: React.ReactNode }) {
+  return <div className="card overflow-x-auto">{(title || onSearch) && <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">{title && <h1 className="text-xl font-bold">{title}</h1>}{onSearch && <input className="input sm:ml-auto sm:max-w-xs" placeholder={title ? `Search ${title.toLowerCase()}` : 'Search'} value={search} onChange={(e) => onSearch(e.target.value)} />}</div>}<table className="w-full min-w-[720px] text-sm"><tbody>{rows.length === 0 && <tr className="border-t border-slate-200 dark:border-slate-800"><td className="p-6 text-center text-slate-500" colSpan={5}>No leave requests yet.</td></tr>}{rows.map((r, i) => <tr className="border-t border-slate-200 dark:border-slate-800" key={i}>{r.map((c, j) => <td className="p-2" key={j}>{c}</td>)}</tr>)}</tbody></table>{pagination}</div>;
 }
 
 function formatDateRange(startDate: string, endDate: string) {

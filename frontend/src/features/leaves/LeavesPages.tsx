@@ -6,7 +6,9 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { applyLeave, leaveTypes, leaves, withdrawLeave } from '../../api/portal';
 import { Button } from '../../components/ui/Button';
+import { Pagination } from '../../components/ui/Pagination';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { useAuth } from '../../stores/auth';
 
 type LeaveForm = { leaveTypeId: string; reason: string; isHalfDay: boolean };
 
@@ -82,7 +84,10 @@ export function ApplyLeavePage() {
 
 export function MyLeavesPage() {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ['leaves'], queryFn: () => leaves() });
+  const userId = useAuth((state) => state.user?.id);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const { data, isLoading } = useQuery({ queryKey: ['leaves', userId, page, pageSize], queryFn: () => leaves('/leave-applications', { page, pageSize }) });
   const withdraw = useMutation({ mutationFn: withdrawLeave, onSuccess: () => { toast.success('Leave withdrawn'); qc.invalidateQueries({ queryKey: ['leaves'] }); } });
   const rows = data?.items ?? [];
   return <div className="card overflow-x-auto">
@@ -95,11 +100,13 @@ export function MyLeavesPage() {
         {!isLoading && rows.map((x) => <tr className="border-t border-slate-200 dark:border-slate-800" key={x.id}><td className="p-2">{x.applicationNumber}</td><td><LeaveTypeBadge code={x.leaveTypeCode} /></td><td>{x.startDate} to {x.endDate}</td><td>{x.totalDays}</td><td><StatusBadge status={x.status} /></td><td>{isPending(x.status) && <Button className="h-8 bg-slate-600 px-3 hover:bg-slate-700" onClick={() => withdraw.mutate(x.id)}>Withdraw</Button>}</td></tr>)}
       </tbody>
     </table>
+    <Pagination page={data?.page ?? page} pageSize={pageSize} totalPages={data?.totalPages ?? 1} totalCount={data?.totalCount ?? 0} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} />
   </div>;
 }
 
 export function LeaveCalendarPage() {
-  const { data } = useQuery({ queryKey: ['calendar'], queryFn: () => leaves() });
+  const userId = useAuth((state) => state.user?.id);
+  const { data } = useQuery({ queryKey: ['calendar', userId], queryFn: () => leaves('/leave-applications', { pageSize: 100 }) });
   return <div className="card"><h1 className="text-xl font-bold">Leave Calendar</h1><div className="mt-4 grid gap-2 md:grid-cols-2">{data?.items.map((x) => <div className="rounded-md bg-indigo-50 p-3 text-sm dark:bg-indigo-950" key={x.id}>{x.employeeName}: {x.startDate} to {x.endDate}</div>)}</div></div>;
 }
 
